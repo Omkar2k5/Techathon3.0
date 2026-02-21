@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,7 +19,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,6 +26,7 @@ import androidx.core.content.FileProvider
 import com.example.edunet.data.network.RemoteFile
 import com.example.edunet.data.network.SessionClient
 import com.example.edunet.data.network.SessionInfo
+import com.example.edunet.data.network.discoverSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -41,60 +39,67 @@ private val Accent   = Color(0xFF6C63FF)
 private val TextPri  = Color(0xFFFFFFFF)
 private val TextSec  = Color(0xFFB0B0C8)
 
+/**
+ * Student session screen — auto-discovers the teacher's server for [subjectCode]
+ * via UDP broadcast. No QR scanning, no manual URL entry.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentSessionScreen(
-    initialUrl: String = "",   // pass from QR scan
+    subjectCode: String,
+    subjectName: String,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
 
-    var baseUrl      by remember { mutableStateOf(initialUrl) }
-    var urlInput     by remember { mutableStateOf(initialUrl) }
-    var sessionInfo  by remember { mutableStateOf<SessionInfo?>(null) }
+    // States
+    var searching    by remember { mutableStateOf(true) }
     var connected    by remember { mutableStateOf(false) }
     var errorMsg     by remember { mutableStateOf("") }
+    var baseUrl      by remember { mutableStateOf("") }
+    var sessionInfo  by remember { mutableStateOf<SessionInfo?>(null) }
     var files        by remember { mutableStateOf<List<RemoteFile>>(emptyList()) }
     var lastPoll     by remember { mutableStateOf(0L) }
-    var downloading  by remember { mutableStateOf<String?>(null) }  // file id being downloaded
+    var downloading  by remember { mutableStateOf<String?>(null) }
 
-    // Auto-poll for new files every 3 seconds while connected
+    // Step 1: Discover teacher's server via UDP broadcast
+    LaunchedEffect(Unit) {
+        searching = true
+        errorMsg  = ""
+        val url = discoverSession(subjectCode, timeoutMs = 15_000)
+        if (url == null) {
+            searching = false
+            errorMsg  = "No active session found for $subjectCode. Make sure you are on the same WiFi/hotspot as your teacher."
+            return@LaunchedEffect
+        }
+        // Step 2: Connect and load existing files
+        try {
+            val info = SessionClient.getSessionInfo(url)
+            baseUrl     = url
+            sessionInfo = info
+            files       = SessionClient.getFiles(url)
+            lastPoll    = if (files.isNotEmpty()) files.maxOf { it.addedAt } else 0L
+            connected   = true
+        } catch (e: Exception) {
+            errorMsg = "Found session but could not connect: ${e.message}"
+        }
+        searching = false
+    }
+
+    // Step 3: Poll for new files every 3 seconds while connected
     LaunchedEffect(connected) {
         if (!connected) return@LaunchedEffect
         while (isActive) {
+            delay(3000)
             try {
                 val newFiles = SessionClient.getFiles(baseUrl, lastPoll)
                 if (newFiles.isNotEmpty()) {
-                    files = files + newFiles
+                    files    = files + newFiles
                     lastPoll = newFiles.maxOf { it.addedAt }
                 }
             } catch (_: Exception) {}
-            delay(3000)
         }
-    }
-
-    fun connect(url: String) {
-        val trimmed = url.trim().trimEnd('/')
-        scope.launch {
-            try {
-                errorMsg = ""
-                val info = SessionClient.getSessionInfo(trimmed)
-                baseUrl     = trimmed
-                sessionInfo = info
-                connected   = true
-                // Load existing files immediately
-                files     = SessionClient.getFiles(trimmed)
-                lastPoll  = if (files.isNotEmpty()) files.maxOf { it.addedAt } else 0L
-            } catch (e: Exception) {
-                errorMsg = "Cannot connect: ${e.message}"
-            }
-        }
-    }
-
-    // Auto-connect if url provided
-    LaunchedEffect(Unit) {
-        if (initialUrl.isNotBlank()) connect(initialUrl)
     }
 
     fun downloadAndOpen(file: RemoteFile) {
@@ -102,14 +107,13 @@ fun StudentSessionScreen(
             downloading = file.id
             try {
                 val bytes = SessionClient.downloadFileBytes(baseUrl, file.id)
-                val dir = File(
+                val dir   = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                     "EduNet"
                 ).also { it.mkdirs() }
-                val dest = File(dir, file.name)
+                val dest  = File(dir, file.name)
                 FileOutputStream(dest).use { it.write(bytes) }
-                // Open the file
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", dest)
+                val uri   = FileProvider.getUriForFile(context, "${context.packageName}.provider", dest)
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, file.mimeType)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -140,134 +144,124 @@ fun StudentSessionScreen(
                         }
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text("Class Session", fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f))
-                            Text(
-                                if (connected) sessionInfo?.subjectName ?: "Connected" else "Join Session",
-                                fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White
-                            )
+                            Text("Live Session", fontSize = 13.sp, color = Color.White.copy(alpha = 0.8f))
+                            Text(subjectName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                     if (connected) {
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Surface(shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.2f)) {
-                                Text("🟢 Connected", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                            }
-                            sessionInfo?.let { info ->
-                                Surface(shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.2f)) {
-                                    Text("👩‍🏫 ${info.teacherName}", fontSize = 12.sp, color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                                }
-                            }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Chip("🟢 Connected", Color(0xFF4CAF50))
+                            sessionInfo?.let { Chip("👩‍🏫 ${it.teacherName}", Color.White.copy(alpha = 0.6f)) }
                         }
                     }
                 }
             }
 
-            if (!connected) {
-                // ── Connect UI ────────────────────────────────────────────────
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("📡", fontSize = 64.sp)
-                    Spacer(Modifier.height(16.dp))
-                    Text("Join a Session", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = TextPri)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Scan the teacher's QR code, or enter the session URL manually",
-                        fontSize = 14.sp, color = TextSec, textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(32.dp))
-
-                    OutlinedTextField(
-                        value = urlInput,
-                        onValueChange = { urlInput = it },
-                        label = { Text("Session URL", color = TextSec) },
-                        placeholder = { Text("http://192.168.x.x:8080", color = TextSec.copy(alpha = 0.4f)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                        keyboardActions = KeyboardActions(onGo = { connect(urlInput) }),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor   = Accent,
-                            unfocusedBorderColor = TextSec.copy(alpha = 0.3f),
-                            focusedTextColor     = TextPri,
-                            unfocusedTextColor   = TextPri,
-                            cursorColor          = Accent
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    if (errorMsg.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { connect(urlInput) },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Accent)
-                    ) {
-                        Icon(Icons.Default.Send, contentDescription = null, tint = Color.White)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Connect", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+            when {
+                // ── Searching ────────────────────────────────────────────────
+                searching -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = Accent, modifier = Modifier.size(56.dp), strokeWidth = 4.dp)
+                            Spacer(Modifier.height(24.dp))
+                            Text("Looking for session…", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextPri)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Searching for your teacher's $subjectCode session on the local network.",
+                                fontSize = 14.sp, color = TextSec, textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text("Make sure you are on the same WiFi or hotspot as your teacher.",
+                                fontSize = 12.sp, color = TextSec.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 32.dp))
+                        }
                     }
                 }
-            } else {
-                // ── File Feed ─────────────────────────────────────────────────
-                Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-                    Spacer(Modifier.height(20.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Received Files", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPri)
-                        Surface(shape = RoundedCornerShape(50), color = Accent) {
-                            Text("${files.size}", color = Color.White, fontSize = 12.sp,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text("Auto-updating every 3 seconds • Tap a file to download and open",
-                        fontSize = 12.sp, color = TextSec)
-                    Spacer(Modifier.height(16.dp))
 
-                    if (files.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                // ── Error ────────────────────────────────────────────────────
+                errorMsg.isNotEmpty() && !connected -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("⏳", fontSize = 48.sp)
-                                Spacer(Modifier.height(12.dp))
-                                Text("Waiting for files...", color = TextSec, fontSize = 16.sp)
-                                Text("The teacher hasn't shared anything yet", color = TextSec.copy(alpha = 0.6f), fontSize = 13.sp)
-                            }
-                        }
-                    } else {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(files.reversed()) { f ->
-                                ReceivedFileCard(
-                                    file        = f,
-                                    isDownloading = downloading == f.id,
-                                    onClick     = { downloadAndOpen(f) }
-                                )
+                            Text("📡", fontSize = 56.sp)
+                            Spacer(Modifier.height(16.dp))
+                            Text("Session Not Found", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextPri)
+                            Spacer(Modifier.height(8.dp))
+                            Text(errorMsg, fontSize = 14.sp, color = TextSec, textAlign = TextAlign.Center)
+                            Spacer(Modifier.height(24.dp))
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        searching = true; errorMsg = ""
+                                        val url = discoverSession(subjectCode, 15_000)
+                                        if (url != null) {
+                                            try {
+                                                sessionInfo = SessionClient.getSessionInfo(url)
+                                                baseUrl = url
+                                                files   = SessionClient.getFiles(url)
+                                                lastPoll = if (files.isNotEmpty()) files.maxOf { it.addedAt } else 0L
+                                                connected = true
+                                            } catch (e: Exception) { errorMsg = e.message ?: "Connection failed" }
+                                        } else { errorMsg = "No active session found. Try again." }
+                                        searching = false
+                                    }
+                                },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Try Again")
                             }
                         }
                     }
+                }
 
-                    if (errorMsg.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                // ── File Feed ─────────────────────────────────────────────────
+                else -> {
+                    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+                        Spacer(Modifier.height(20.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Received Files", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPri)
+                            Surface(shape = RoundedCornerShape(50), color = Accent) {
+                                Text("${files.size}", color = Color.White, fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("Auto-updates every 3s • Tap a file to download & open",
+                            fontSize = 12.sp, color = TextSec)
+                        Spacer(Modifier.height(16.dp))
+
+                        if (files.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("⏳", fontSize = 48.sp)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text("Waiting for files…", color = TextSec, fontSize = 16.sp)
+                                    Text("Teacher hasn't shared anything yet.", color = TextSec.copy(alpha = 0.6f), fontSize = 13.sp)
+                                }
+                            }
+                        } else {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(files.reversed()) { f ->
+                                    ReceivedFileCard(f, isDownloading = downloading == f.id, onClick = { downloadAndOpen(f) })
+                                }
+                            }
+                        }
+                        if (errorMsg.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                        }
                     }
                 }
             }
@@ -276,23 +270,23 @@ fun StudentSessionScreen(
 }
 
 @Composable
+private fun Chip(label: String, bg: Color) {
+    Surface(shape = RoundedCornerShape(50), color = bg.copy(alpha = 0.2f)) {
+        Text(label, fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+    }
+}
+
+@Composable
 private fun ReceivedFileCard(file: RemoteFile, isDownloading: Boolean, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark)
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Accent.copy(alpha = 0.15f)),
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Accent.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(fileEmoji(file.mimeType), fontSize = 22.sp)
@@ -305,11 +299,7 @@ private fun ReceivedFileCard(file: RemoteFile, isDownloading: Boolean, onClick: 
             }
             Spacer(Modifier.width(8.dp))
             if (isDownloading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                    color = Accent
-                )
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = Accent)
             } else {
                 Text("⬇", color = Accent, fontSize = 20.sp)
             }

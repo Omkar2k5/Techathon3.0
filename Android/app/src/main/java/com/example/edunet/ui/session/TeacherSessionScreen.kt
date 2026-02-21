@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.edunet.data.network.QrUtils
+import com.example.edunet.data.network.SessionBroadcaster
 import com.example.edunet.data.network.SessionServer
 import com.example.edunet.data.network.SharedFile
 import kotlinx.coroutines.delay
@@ -57,14 +58,15 @@ fun TeacherSessionScreen(
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
 
-    // Server state
-    var server    by remember { mutableStateOf<SessionServer?>(null) }
-    var isRunning by remember { mutableStateOf(false) }
-    var sessionUrl by remember { mutableStateOf<String?>(null) }
-    var qrBitmap  by remember { mutableStateOf<Bitmap?>(null) }
+    // Server + broadcaster state
+    var server      by remember { mutableStateOf<SessionServer?>(null) }
+    var broadcaster by remember { mutableStateOf<SessionBroadcaster?>(null) }
+    var isRunning   by remember { mutableStateOf(false) }
+    var sessionUrl  by remember { mutableStateOf<String?>(null) }
+    var qrBitmap    by remember { mutableStateOf<Bitmap?>(null) }
     var sharedFiles by remember { mutableStateOf<List<SharedFile>>(emptyList()) }
-    var clients   by remember { mutableStateOf(0) }
-    var errorMsg  by remember { mutableStateOf("") }
+    var clients     by remember { mutableStateOf(0) }
+    var errorMsg    by remember { mutableStateOf("") }
 
     // Refresh client count every 3s when running
     LaunchedEffect(isRunning) {
@@ -76,7 +78,7 @@ fun TeacherSessionScreen(
 
     // Clean up on exit
     DisposableEffect(Unit) {
-        onDispose { server?.stop() }
+        onDispose { server?.stop(); broadcaster?.stop() }
     }
 
     fun startSession() {
@@ -85,22 +87,21 @@ fun TeacherSessionScreen(
             errorMsg = "No WiFi/hotspot IP found. Enable your hotspot or connect to WiFi first."
             return
         }
-        val srv = SessionServer(
-            teacherName  = teacherName,
-            subjectName  = subjectName,
-            subjectCode  = subjectCode
-        )
+        val srv = SessionServer(teacherName = teacherName, subjectName = subjectName, subjectCode = subjectCode)
         srv.start()
-        server     = srv
-        sessionUrl = url
-        qrBitmap   = QrUtils.generateQrBitmap(url)
-        isRunning  = true
-        errorMsg   = ""
+        val bc = SessionBroadcaster(subjectCode = subjectCode, url = url)
+        bc.start()
+        server      = srv
+        broadcaster = bc
+        sessionUrl  = url
+        qrBitmap    = QrUtils.generateQrBitmap(url)
+        isRunning   = true
+        errorMsg    = ""
     }
 
     fun stopSession() {
-        server?.stop()
-        server     = null
+        server?.stop();      server      = null
+        broadcaster?.stop(); broadcaster = null
         isRunning  = false
         sessionUrl = null
         qrBitmap   = null

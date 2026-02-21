@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.edunet.data.SubjectCache
 import com.example.edunet.data.SessionManager
 import com.example.edunet.data.repository.JoinResult
 import com.example.edunet.data.repository.MongoRepository
@@ -47,7 +48,7 @@ private val TextSec   = Color(0xFFB0B0C8)
 fun HomeScreen(
     onLogout: () -> Unit,
     onStartSession: (teacherName: String, subjectName: String, subjectCode: String) -> Unit = { _, _, _ -> },
-    onJoinSession: () -> Unit = {}
+    onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val session = remember { SessionManager(context) }
@@ -67,19 +68,43 @@ fun HomeScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit, onJoinSession: () -> Unit = {}) {
-    val scope = rememberCoroutineScope()
-    var subjects by remember { mutableStateOf<List<SubjectItem>>(emptyList()) }
+fun StudentHomeScreen(
+    session: SessionManager,
+    onLogout: () -> Unit,
+    onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
+) {
+    val context = LocalContext.current
+    val cache   = remember { SubjectCache(context) }
+    val scope   = rememberCoroutineScope()
+    var subjects  by remember { mutableStateOf<List<SubjectItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg  by remember { mutableStateOf("") }
+    var isOffline by remember { mutableStateOf(false) }
     var showJoinDialog by remember { mutableStateOf(false) }
 
-    // Load subjects on open
+    // Offline-first: load cache immediately, then try network
     LaunchedEffect(Unit) {
         isLoading = true
-        when (val r = MongoRepository.getStudentSubjects(session.getUserId())) {
-            is SubjectResult.Success -> subjects = r.subjects
-            is SubjectResult.Error   -> errorMsg = r.message
+        val uid = session.getUserId()
+        // 1. Show cached data instantly (if any)
+        cache.loadStudentSubjects(uid)?.let { cached ->
+            subjects = cached
+        }
+        // 2. Try fetching fresh data from server
+        if (cache.isOnline()) {
+            isOffline = false
+            when (val r = MongoRepository.getStudentSubjects(uid)) {
+                is SubjectResult.Success -> {
+                    subjects = r.subjects
+                    cache.saveStudentSubjects(uid, r.subjects)
+                }
+                is SubjectResult.Error -> {
+                    if (subjects.isEmpty()) errorMsg = r.message
+                }
+            }
+        } else {
+            isOffline = true
+            if (subjects.isEmpty()) errorMsg = "No internet. No cached data available."
         }
         isLoading = false
     }
@@ -127,16 +152,31 @@ fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit, onJoinSessi
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = Color.White.copy(alpha = 0.2f)
-                    ) {
-                        Text(
-                            "📚 Student",
-                            color = Color.White, fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                "📚 Student",
+                                color = Color.White, fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (isOffline) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFFF9800).copy(alpha = 0.9f)
+                            ) {
+                                Text(
+                                    "📶 Offline – cached",
+                                    color = Color.White, fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -187,7 +227,7 @@ fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit, onJoinSessi
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(subjects) { subj ->
-                                StudentSubjectCard(subj)
+                                StudentSubjectCard(subj, onJoinSession = { onJoinSession(subj.subjectCode, subj.subjectName) })
                             }
                         }
                     }
@@ -195,29 +235,15 @@ fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit, onJoinSessi
             }
         }
 
-        // ── FAB row: Join Session + Join Class ───────────────────────────────
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            SmallFloatingActionButton(
-                onClick = { onJoinSession() },
-                containerColor = Color(0xFF00D4FF),
-                contentColor = Color.White
-            ) {
-                Text("📡", fontSize = 18.sp)
-            }
-            ExtendedFloatingActionButton(
-                onClick = { showJoinDialog = true },
-                icon    = { Icon(Icons.Default.Add, contentDescription = null) },
-                text    = { Text("Join Class") },
-                containerColor = Accent,
-                contentColor   = Color.White
-            )
-        }
+        // ── FAB: Join Class only ──────────────────────────────────────────────
+        ExtendedFloatingActionButton(
+            onClick = { showJoinDialog = true },
+            icon    = { Icon(Icons.Default.Add, contentDescription = null) },
+            text    = { Text("Join Class") },
+            containerColor = Accent,
+            contentColor   = Color.White,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)
+        )
     }
 
     // ── Join Dialog ───────────────────────────────────────────────────────────
@@ -244,16 +270,34 @@ fun TeacherHomeScreen(
     onLogout: () -> Unit,
     onStartSession: (subjectName: String, subjectCode: String) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
+    val cache   = remember { SubjectCache(context) }
     var subjects by remember { mutableStateOf<List<SubjectItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg  by remember { mutableStateOf("") }
+    var isOffline by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         isLoading = true
-        when (val r = MongoRepository.getTeacherSubjects(session.getUserId())) {
-            is SubjectResult.Success -> subjects = r.subjects
-            is SubjectResult.Error   -> errorMsg = r.message
+        val uid = session.getUserId()
+        // 1. Show cached data instantly
+        cache.loadTeacherSubjects(uid)?.let { cached -> subjects = cached }
+        // 2. Try fresh from network
+        if (cache.isOnline()) {
+            isOffline = false
+            when (val r = MongoRepository.getTeacherSubjects(uid)) {
+                is SubjectResult.Success -> {
+                    subjects = r.subjects
+                    cache.saveTeacherSubjects(uid, r.subjects)
+                }
+                is SubjectResult.Error -> {
+                    if (subjects.isEmpty()) errorMsg = r.message
+                }
+            }
+        } else {
+            isOffline = true
+            if (subjects.isEmpty()) errorMsg = "No internet. No cached data available."
         }
         isLoading = false
     }
@@ -301,16 +345,31 @@ fun TeacherHomeScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = Color.White.copy(alpha = 0.2f)
-                    ) {
-                        Text(
-                            "🎓 Teacher",
-                            color = Color.White, fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                "🎓 Teacher",
+                                color = Color.White, fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (isOffline) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color(0xFFFF9800).copy(alpha = 0.9f)
+                            ) {
+                                Text(
+                                    "📶 Offline – cached",
+                                    color = Color.White, fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -390,47 +449,51 @@ fun TeacherHomeScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StudentSubjectCard(subj: SubjectItem) {
+private fun StudentSubjectCard(subj: SubjectItem, onJoinSession: () -> Unit = {}) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Code badge
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.linearGradient(listOf(Accent, AccentAlt))),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    subj.subjectCode.take(4),
-                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(subj.subjectName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPri)
-                Spacer(modifier = Modifier.height(3.dp))
-                Text("by ${subj.teacherName}", fontSize = 12.sp, color = TextSec)
-                Spacer(modifier = Modifier.height(3.dp))
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = Accent.copy(alpha = 0.15f)
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Code badge
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Brush.linearGradient(listOf(Accent, AccentAlt))),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        subj.subjectCode, color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        subj.subjectCode.take(4),
+                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                        textAlign = TextAlign.Center
                     )
                 }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(subj.subjectName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPri)
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text("by ${subj.teacherName}", fontSize = 12.sp, color = TextSec)
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Surface(shape = RoundedCornerShape(50), color = Accent.copy(alpha = 0.15f)) {
+                        Text(
+                            subj.subjectCode, color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = onJoinSession,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D4FF)),
+                modifier = Modifier.fillMaxWidth().height(36.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                Text("📡 Join Session", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
             }
         }
     }

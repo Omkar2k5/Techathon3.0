@@ -59,8 +59,10 @@ fun AppNavigation() {
                     val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
                     navController.navigate("teacher_session/$tEnc/$sEnc/$cEnc")
                 },
-                onJoinSession = {
-                    navController.navigate("student_session/ ")
+                onJoinSession = { subjectCode, subjectName ->
+                    val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
+                    val sEnc = URLEncoder.encode(subjectName, "UTF-8")
+                    navController.navigate("student_session/$cEnc/$sEnc")
                 }
             )
         }
@@ -82,15 +84,17 @@ fun AppNavigation() {
             )
         }
 
-        // Student session (optional initial URL from QR)
+        // Student session (subjectCode + subjectName)
         composable(
-            route = "student_session/{initialUrl}",
-            arguments = listOf(navArgument("initialUrl") { type = NavType.StringType })
+            route = "student_session/{subjectCode}/{subjectName}",
+            arguments = listOf(
+                navArgument("subjectCode") { type = NavType.StringType },
+                navArgument("subjectName") { type = NavType.StringType }
+            )
         ) { backStack ->
-            val rawUrl = backStack.arguments?.getString("initialUrl") ?: ""
-            val url = if (rawUrl.isBlank() || rawUrl == " ") "" else URLDecoder.decode(rawUrl, "UTF-8")
             StudentSessionScreen(
-                initialUrl = url,
+                subjectCode = URLDecoder.decode(backStack.arguments?.getString("subjectCode") ?: "", "UTF-8"),
+                subjectName = URLDecoder.decode(backStack.arguments?.getString("subjectName") ?: "", "UTF-8"),
                 onBack = { navController.popBackStack() }
             )
         }
