@@ -108,63 +108,58 @@ pub async fn try_remote_llm(req: &OllamaRequest) -> Result<String, String> {
         return Err("No remote LLM connections available".to_string());
     }
 
-    // Try each known LLM connection with retry logic
-    for (peer, (host, port)) in connections.iter() {
-        // Retry up to 3 times with exponential backoff
-        for attempt in 1..=3 {
-            let client = Client::builder()
-                .timeout(REMOTE_REQUEST_TIMEOUT)
-                .connect_timeout(Duration::from_secs(30))
-                .pool_idle_timeout(Duration::from_secs(90))
-                .pool_max_idle_per_host(2)
-                .tcp_keepalive(Duration::from_secs(60))
-                .build()
-                .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    // Try each known LLM peer via their EduNet server (port 8080, always open)
+    // We call /api/llm/proxy which forwards to their local Ollama
+    let peers: Vec<(String, String)> = connections
+        .iter()
+        .map(|(peer, (host, _port))| (peer.clone(), host.clone()))
+        .collect();
+    drop(connections); // release lock before async calls
 
-            let remote_url = format!("http://{}:{}/api/chat", host, port);
-            
-            println!("Attempting to use remote LLM at {} (attempt {}/3)", remote_url, attempt);
-            
-            match client.post(&remote_url)
-                .json(&req)
-                .timeout(REMOTE_REQUEST_TIMEOUT)
-                .send()
-                .await {
-                    Ok(response) => {
-                        if response.status().is_success() {
-                            let body = response.text().await
-                                .map_err(|e| format!("Failed to get remote LLM response: {}", e))?;
-                            
-                            match process_ollama_response(&body) {
-                                Ok(result) => {
-                                    println!("Successfully used remote LLM from peer {}", peer);
-                                    return Ok(result)
-                                },
-                                Err(e) => println!("Failed to process response from {}: {}", peer, e),
-                            }
-                        } else {
-                            println!("Remote LLM {} returned error status: {}", peer, response.status());
-                        }
-                    },
-                    Err(e) => {
-                        println!("Failed to connect to remote LLM {} (attempt {}/3): {}", peer, attempt, e);
-                        
-                        // Exponential backoff: 2s, 5s, 10s
-                        if attempt < 3 {
-                            let delay = match attempt {
-                                1 => Duration::from_secs(2),
-                                2 => Duration::from_secs(5),
-                                _ => Duration::from_secs(10),
-                            };
-                            println!("Retrying in {} seconds...", delay.as_secs());
-                            tokio::time::sleep(delay).await;
-                        }
-                    },
+    for (peer, host) in peers {
+        let proxy_url = format!("http://{}:8080/api/llm/proxy", host);
+        println!("Attempting remote LLM via EduNet proxy at {}", proxy_url);
+
+        let client = Client::builder()
+            .timeout(REMOTE_REQUEST_TIMEOUT)
+            .connect_timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| format!("HTTP client error: {}", e))?;
+
+        match client.post(&proxy_url).json(req).send().await {
+            Ok(response) if response.status().is_success() => {
+                let body = response.text().await
+                    .map_err(|e| format!("Failed to read proxy response: {}", e))?;
+                match process_ollama_response(&body) {
+                    Ok(result) => {
+                        println!("Remote LLM via {} succeeded", peer);
+                        return Ok(result);
+                    }
+                    Err(e) => println!("Proxy parse error from {}: {}", peer, e),
                 }
+            }
+            Ok(response) => println!("Proxy at {} returned {}", proxy_url, response.status()),
+            Err(e) => println!("Failed to reach proxy at {}: {}", proxy_url, e),
         }
     }
-    
-    Err("No available LLM connections responded successfully after retries".to_string())
+
+    Err("No available LLM proxy responded successfully".to_string())
+}
+
+/// LLM proxy endpoint — peers call this to use our local Ollama via port 8080
+#[post("/llm/proxy")]
+pub async fn llm_proxy(body: web::Json<OllamaRequest>) -> HttpResponse {
+    let req = body.into_inner();
+    match try_local_llm(&req).await {
+        Ok(reply) => HttpResponse::Ok().json(serde_json::json!({ 
+            "model": &req.model,
+            "created_at": chrono::Utc::now().to_rfc3339(),
+            "message": { "role": "assistant", "content": reply },
+            "done": true
+        })),
+        Err(e) => HttpResponse::ServiceUnavailable()
+            .json(serde_json::json!({ "error": e })),
+    }
 }
 
 fn process_ollama_response(body: &str) -> Result<String, String> {

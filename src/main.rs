@@ -112,6 +112,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api")
                     .service(llm::chat)
+                    .service(llm::llm_proxy)
                     .configure(lab_module::config),
             )
             .service(get_peers)
