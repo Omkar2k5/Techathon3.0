@@ -37,11 +37,12 @@ import kotlinx.coroutines.launch
 // ─── B&W Colours ─────────────────────────────────────────────────────────────
 private val BgDark    = Color(0xFF000000)
 private val CardDark  = Color(0xFF111111)
-private val Accent    = Color(0xFFFFFFFF)   // primary interactive = white
-private val AccentAlt = Color(0xFFCCCCCC)
-private val GreenOk   = Color(0xFFFFFFFF)   // teacher positive = white
+private val Accent    = Color(0xFF1A1A1A)   // dark button/FAB bg → white text on it
+private val AccentAlt = Color(0xFF2A2A2A)
+private val GreenOk   = Color(0xFF1A1A1A)   // same dark for teacher elements
 private val TextPri   = Color(0xFFFFFFFF)
 private val TextSec   = Color(0xFF888888)
+private val OnAccent  = Color(0xFFFFFFFF)   // text/icon ON Accent/GreenOk buttons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,11 +201,11 @@ fun StudentHomeScreen(
                     )
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Accent
+                        color = Color(0xFF2A2A2A)
                     ) {
                         Text(
                             "${subjects.size} enrolled",
-                            color = Color.White, fontSize = 12.sp,
+                            color = TextPri, fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )
                     }
@@ -240,7 +241,7 @@ fun StudentHomeScreen(
             onClick = { showJoinDialog = true },
             icon    = { Icon(Icons.Default.Add, contentDescription = null) },
             text    = { Text("Join Class") },
-            containerColor = Accent,
+            containerColor = Color(0xFF222222),
             contentColor   = Color.White,
             modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)
         )
@@ -388,7 +389,7 @@ fun TeacherHomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("My Subjects", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextPri)
-                    Surface(shape = RoundedCornerShape(50), color = GreenOk) {
+                    Surface(shape = RoundedCornerShape(50), color = Color(0xFF2A2A2A)) {
                         Text(
                             "${subjects.size} subjects",
                             color = Color.White, fontSize = 12.sp,
@@ -423,7 +424,7 @@ fun TeacherHomeScreen(
             onClick = { showCreateDialog = true },
             icon    = { Icon(Icons.Default.Add, contentDescription = null) },
             text    = { Text("Create Subject") },
-            containerColor = GreenOk,
+            containerColor = Color(0xFF222222),
             contentColor   = Color.White,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -462,7 +463,7 @@ private fun StudentSubjectCard(subj: SubjectItem, onJoinSession: () -> Unit = {}
                     modifier = Modifier
                         .size(52.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Brush.linearGradient(listOf(Accent, AccentAlt))),
+                        .background(Color(0xFF2A2A2A)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -477,9 +478,9 @@ private fun StudentSubjectCard(subj: SubjectItem, onJoinSession: () -> Unit = {}
                     Spacer(modifier = Modifier.height(3.dp))
                     Text("by ${subj.teacherName}", fontSize = 12.sp, color = TextSec)
                     Spacer(modifier = Modifier.height(3.dp))
-                    Surface(shape = RoundedCornerShape(50), color = Accent.copy(alpha = 0.15f)) {
+                    Surface(shape = RoundedCornerShape(50), color = Color(0xFF2A2A2A)) {
                         Text(
-                            subj.subjectCode, color = Accent, fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                            subj.subjectCode, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                         )
                     }
@@ -489,7 +490,7 @@ private fun StudentSubjectCard(subj: SubjectItem, onJoinSession: () -> Unit = {}
             Button(
                 onClick = onJoinSession,
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D4FF)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
                 modifier = Modifier.fillMaxWidth().height(36.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
@@ -516,7 +517,7 @@ private fun TeacherSubjectCard(subj: SubjectItem, onStartSession: () -> Unit = {
                 modifier = Modifier
                     .size(52.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF1B5E20), GreenOk))),
+                    .background(Color(0xFF2A2A2A)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -531,18 +532,19 @@ private fun TeacherSubjectCard(subj: SubjectItem, onStartSession: () -> Unit = {
                 Spacer(modifier = Modifier.height(3.dp))
                 Text("Code: ${subj.subjectCode}", fontSize = 12.sp, color = TextSec)
                 Spacer(modifier = Modifier.height(3.dp))
-                Text("👥 ${subj.studentCount} students", fontSize = 11.sp, color = GreenOk)
+                Text("👥 ${subj.studentCount} students", fontSize = 11.sp, color = TextSec)
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = onStartSession,
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = GreenOk),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp),
+                    tint = Color.White)
                 Spacer(Modifier.width(4.dp))
-                Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
     }
