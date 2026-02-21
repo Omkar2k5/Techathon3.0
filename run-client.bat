@@ -34,6 +34,6 @@ netsh advfirewall set allprofiles state on
 
 echo.
 echo Starting Node...
-neuromesh.exe
+edunet.exe
 
 pause

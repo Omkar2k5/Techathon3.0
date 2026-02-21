@@ -26,7 +26,7 @@ export const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
                         <Brain className="w-8 h-8 text-cyan-400" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold gradient-text">NodeNetwork Status</h3>
+                        <h3 className="text-xl font-bold gradient-text">EduNet Status</h3>
                         <p className="text-sm text-gray-400">Real-time neural mesh monitoring</p>
                     </div>
                 </div>
@@ -37,7 +37,7 @@ export const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
                             <Layers className="w-8 h-8 text-cyan-400" />
                         </div>
                         <div className="text-3xl font-bold text-white mb-2">{peerCount}</div>
-                        <div className="text-sm text-gray-400">Network Nodes</div>
+                        <div className="text-sm text-gray-400">EduNet Nodes</div>
                     </div>
 
                     <div className="glass rounded-xl p-6 text-center group hover:scale-105 transition-transform duration-200">

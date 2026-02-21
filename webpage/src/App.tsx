@@ -131,7 +131,7 @@ function ChatPage({
                 <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl mb-4 mx-auto">
                   <Sparkles className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold gradient-text mb-3">Welcome to NodeNetwork</h2>
+                <h2 className="text-2xl font-bold gradient-text mb-3">Welcome to EduNet</h2>
                 <p className="text-gray-400 max-w-md mx-auto">
                   Your distributed neural intelligence network. Ask me anything or connect with other neural nodes.
                 </p>

@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse border-2 border-gray-900 ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold gradient-text">NodeNetwork</h1>
+                        <h1 className="text-lg font-bold gradient-text">EduNet</h1>
                         <p className="text-xs text-gray-400">Distributed Computing</p>
                     </div>
                 </div>

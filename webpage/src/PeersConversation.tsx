@@ -108,9 +108,9 @@ export function PeersConversation() {
               </div>
               <div className="absolute -inset-2 bg-gradient-to-r from-gray-600/20 to-gray-700/20 rounded-3xl blur-xl"></div>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-3">No Network Nodes Detected</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">No EduNet Nodes Detected</h3>
             <p className="text-gray-400 max-w-lg mx-auto mb-6 leading-relaxed">
-              No peer conversations are currently available. Make sure other Network nodes are online and connected to the same network.
+              No peer conversations are currently available. Make sure other EduNet nodes are online and connected to the same network.
             </p>
             <div className="glass p-6 rounded-xl max-w-md mx-auto">
               <h4 className="text-sm font-semibold text-cyan-400 mb-3">Quick Setup Guide:</h4>
@@ -121,7 +121,7 @@ export function PeersConversation() {
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                  <span>Check firewall settings allow NodeNetwork</span>
+                  <span>Check firewall settings allow EduNet</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
@@ -220,7 +220,7 @@ export function PeersConversation() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-cyan-400 mb-2">
-                        Network Node: {selectedPeer}
+                        EduNet Node: {selectedPeer}
                       </h2>
                       <div className="flex items-center gap-4 text-sm text-gray-400">
                         <div className="flex items-center gap-2">

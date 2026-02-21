@@ -28,7 +28,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                         </div>
                         <div>
                             <h1 className="text-xl md:text-2xl font-bold gradient-text">
-                                NodeNetwork
+                                EduNet
                             </h1>
                             <div className="flex items-center gap-2 mt-1">
                                 <Workflow className="w-3 h-3 text-cyan-400" />

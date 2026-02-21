@@ -1,5 +1,5 @@
 @echo off
-echo ===== Network Node Startup =====
+echo ===== EduNet Startup =====
 echo.
 
 echo 1. Checking and configuring firewall (one-time setup)...
@@ -15,7 +15,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo 2. Stopping existing processes...
-taskkill /f /im neuromesh.exe 2>nul
+taskkill /f /im edunet.exe 2>nul
 
 echo.
 echo 3. Waiting for processes to stop...
@@ -26,6 +26,6 @@ echo.
 echo 4. Starting Node...
 echo Open http://localhost:3000 in your browser
 echo.
-.\target\release\neuromesh.exe
+.\target\release\edunet.exe
 
 pause

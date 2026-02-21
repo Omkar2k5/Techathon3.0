@@ -1,4 +1,4 @@
-# Core Distributed Network Node
+# EduNet
 
 A high-performance, distributed peer-to-peer networking framework built. This project enables seamless node discovery, secure local network communication, and decentralized state synchronization. 
 
@@ -18,7 +18,7 @@ A high-performance, distributed peer-to-peer networking framework built. This pr
 
 1. **Download/Build**: Get the latest binary or build directly from the source.
 2. **Configure Network**: Run `fix-firewall.bat` as an Administrator to allow peer-to-peer traffic.
-3. **Start Node**: Run the main executable (`neuromesh.bat` or `neuromesh.exe`).
+3. **Start Node**: Run the main executable (`edunet.bat` or `edunet.exe`).
 4. **Dashboard**: Navigate to the local dashboard (default `http://localhost:3000`) to view network topology and connected peers.
 
 ## Network Configuration (Manual)
