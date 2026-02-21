@@ -36,6 +36,7 @@ pub struct OllamaMessage {
 pub struct OllamaRequest {
     pub model: String,
     pub messages: Vec<OllamaMessage>,
+    pub stream: bool,   // always false — get single JSON, not NDJSON
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -220,7 +221,8 @@ pub async fn chat(req: web::Json<ChatRequest>) -> Result<HttpResponse, Error> {
     CONVERSATION_STORE.add_message("local".to_string(), question_message).await;
 
     let ollama_req = OllamaRequest {
-        model: "phi3-fast".to_string(),
+        model: "phi3-fast:latest".to_string(),
+        stream: false,
         messages: vec![
             OllamaMessage {
                 role: "user".to_string(),

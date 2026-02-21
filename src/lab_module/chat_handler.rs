@@ -104,7 +104,7 @@ pub struct ChatResponse {
 
 // ── Endpoint ──────────────────────────────────────────────────────────────────
 
-#[post("/chat")]
+#[post("/lab/chat")]
 pub async fn lab_chat(body: web::Json<ChatRequest>) -> HttpResponse {
     let db = get_db();
 
@@ -147,6 +147,7 @@ pub async fn lab_chat(body: web::Json<ChatRequest>) -> HttpResponse {
 
     let ollama_req = OllamaRequest {
         model: model_name.to_string(),
+        stream: false,
         messages: vec![
             OllamaMessage { role: "system".to_string(), content: system_prompt },
             OllamaMessage { role: "user".to_string(),   content: body.message.clone() },
