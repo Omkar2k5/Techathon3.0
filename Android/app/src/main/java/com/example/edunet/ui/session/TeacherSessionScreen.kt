@@ -43,7 +43,7 @@ import java.util.UUID
 
 private val BgDark   = Color(0xFF000000)
 private val CardDark = Color(0xFF111111)
-private val GreenOk  = Color(0xFFFFFFFF)
+private val GreenOk  = Color(0xFF2A2A2A)   // dark chip/accent — white text on it
 private val TextPri  = Color(0xFFFFFFFF)
 private val TextSec  = Color(0xFF888888)
 
@@ -211,12 +211,12 @@ fun TeacherSessionScreen(
                         Button(
                             onClick = { startSession() },
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = GreenOk),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                             modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black)
                             Spacer(Modifier.width(8.dp))
-                            Text("Start Session", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                            Text("Start Session", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
                         }
                     }
                 }

@@ -54,6 +54,7 @@ fun StudentSessionScreen(
 ) {
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
+    val history = remember { com.example.edunet.data.local.SessionHistoryStore(context) }
 
     // Discovery states
     var searching   by remember { mutableStateOf(true) }
@@ -127,6 +128,19 @@ fun StudentSessionScreen(
                 ).also { it.mkdirs() }
                 val dest  = File(dir, file.name)
                 FileOutputStream(dest).use { it.write(bytes) }
+                // ── Save to local history ─────────────────────────────────────
+                history.saveFile(
+                    subjectCode = subjectCode,
+                    subjectName = subjectName,
+                    file = com.example.edunet.data.local.SavedFile(
+                        name       = file.name,
+                        localPath  = dest.absolutePath,
+                        mimeType   = file.mimeType,
+                        sizeBytes  = dest.length(),
+                        receivedAt = System.currentTimeMillis()
+                    )
+                )
+                // ──────────────────────────────────────────────────────────────
                 val uri   = FileProvider.getUriForFile(context, "${context.packageName}.provider", dest)
                 context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(uri, file.mimeType)

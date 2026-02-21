@@ -49,7 +49,8 @@ private val OnAccent  = Color(0xFFFFFFFF)   // text/icon ON Accent/GreenOk butto
 fun HomeScreen(
     onLogout: () -> Unit,
     onStartSession: (teacherName: String, subjectName: String, subjectCode: String) -> Unit = { _, _, _ -> },
-    onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
+    onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
+    onOpenHistory: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val session = remember { SessionManager(context) }
@@ -60,7 +61,7 @@ fun HomeScreen(
             onStartSession(session.getUserName(), sn, sc)
         })
     } else {
-        StudentHomeScreen(session = session, onLogout = onLogout, onJoinSession = onJoinSession)
+        StudentHomeScreen(session = session, onLogout = onLogout, onJoinSession = onJoinSession, onOpenHistory = onOpenHistory)
     }
 }
 
@@ -72,7 +73,8 @@ fun HomeScreen(
 fun StudentHomeScreen(
     session: SessionManager,
     onLogout: () -> Unit,
-    onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
+    onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
+    onOpenHistory: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val cache   = remember { SubjectCache(context) }
@@ -110,20 +112,28 @@ fun StudentHomeScreen(
         isLoading = false
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgDark)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
+    Scaffold(
+        containerColor = BgDark,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick        = { showJoinDialog = true },
+                icon           = { Icon(Icons.Default.Add, contentDescription = null) },
+                text           = { Text("Join Class") },
+                containerColor = Color(0xFF222222),
+                contentColor   = Color.White
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             // ── Header ───────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Color(0xFF111111)
-                    )
+                    .background(Color(0xFF111111))
                     .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
                 Column {
@@ -154,26 +164,18 @@ fun StudentHomeScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = Color.White.copy(alpha = 0.2f)
-                        ) {
+                        Surface(shape = RoundedCornerShape(50), color = Color.White.copy(alpha = 0.2f)) {
                             Text(
                                 "📚 Student",
-                                color = Color.White, fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
+                                color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
                             )
                         }
                         if (isOffline) {
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color(0xFFFF9800).copy(alpha = 0.9f)
-                            ) {
+                            Surface(shape = RoundedCornerShape(50), color = Color(0xFFFF9800).copy(alpha = 0.9f)) {
                                 Text(
                                     "📶 Offline – cached",
-                                    color = Color.White, fontWeight = FontWeight.SemiBold,
-                                    fontSize = 12.sp,
+                                    color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                                 )
                             }
@@ -183,68 +185,59 @@ fun StudentHomeScreen(
             }
 
             // ── Body ─────────────────────────────────────────────────────────
-            Column(
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Text("My Subjects", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextPri)
+                Surface(shape = RoundedCornerShape(50), color = Color(0xFF2A2A2A)) {
                     Text(
-                        "My Subjects",
-                        fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextPri
+                        "${subjects.size} enrolled",
+                        color = TextPri, fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = Color(0xFF2A2A2A)
-                    ) {
-                        Text(
-                            "${subjects.size} enrolled",
-                            color = TextPri, fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                        )
+                }
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Accent)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                when {
-                    isLoading -> {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Accent)
-                        }
-                    }
-                    errorMsg.isNotEmpty() -> {
-                        Text(errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
-                    }
-                    subjects.isEmpty() -> {
+                errorMsg.isNotEmpty() -> {
+                    Text(errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 20.dp))
+                }
+                subjects.isEmpty() -> {
+                    Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                         EmptySubjectsCard(isStudent = true)
                     }
-                    else -> {
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(subjects) { subj ->
-                                StudentSubjectCard(subj, onJoinSession = { onJoinSession(subj.subjectCode, subj.subjectName) })
-                            }
+                }
+                else -> {
+                    // LazyColumn fills remaining space; Scaffold innerPadding already
+                    // adds bottom space equal to FAB height so nothing is obscured
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(subjects) { subj ->
+                            StudentSubjectCard(
+                                subj,
+                                onJoinSession = { onJoinSession(subj.subjectCode, subj.subjectName) },
+                                onOpenHistory = { onOpenHistory(subj.subjectCode, subj.subjectName) }
+                            )
                         }
                     }
                 }
             }
         }
-
-        // ── FAB: Join Class only ──────────────────────────────────────────────
-        ExtendedFloatingActionButton(
-            onClick = { showJoinDialog = true },
-            icon    = { Icon(Icons.Default.Add, contentDescription = null) },
-            text    = { Text("Join Class") },
-            containerColor = Color(0xFF222222),
-            contentColor   = Color.White,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)
-        )
     }
 
     // ── Join Dialog ───────────────────────────────────────────────────────────
@@ -450,9 +443,13 @@ fun TeacherHomeScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StudentSubjectCard(subj: SubjectItem, onJoinSession: () -> Unit = {}) {
+private fun StudentSubjectCard(
+    subj: SubjectItem,
+    onJoinSession: () -> Unit = {},
+    onOpenHistory: () -> Unit = {}
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onOpenHistory() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark)
     ) {
@@ -485,16 +482,29 @@ private fun StudentSubjectCard(subj: SubjectItem, onJoinSession: () -> Unit = {}
                         )
                     }
                 }
+
             }
             Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = onJoinSession,
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
-                modifier = Modifier.fillMaxWidth().height(36.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-            ) {
-                Text("📡 Join Session", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.White)
+            // Action row
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onOpenHistory,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF333333))
+                ) {
+                    Text("📂 History", fontSize = 12.sp, color = TextSec)
+                }
+                Button(
+                    onClick = onJoinSession,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text("📡 Join Session", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                }
             }
         }
     }
@@ -704,11 +714,15 @@ fun CreateSubjectDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor   = GreenOk,
+                        focusedBorderColor   = Color.White,
                         unfocusedBorderColor = TextSec.copy(alpha = 0.3f),
                         focusedTextColor     = TextPri,
                         unfocusedTextColor   = TextPri,
-                        cursorColor          = GreenOk,
+                        cursorColor          = Color.White,
+                        focusedContainerColor   = Color(0xFF1A1A1A),
+                        unfocusedContainerColor = Color(0xFF1A1A1A),
+                        focusedLabelColor    = TextSec,
+                        unfocusedLabelColor  = TextSec
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -724,11 +738,15 @@ fun CreateSubjectDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor   = GreenOk,
+                        focusedBorderColor   = Color.White,
                         unfocusedBorderColor = TextSec.copy(alpha = 0.3f),
                         focusedTextColor     = TextPri,
                         unfocusedTextColor   = TextPri,
-                        cursorColor          = GreenOk,
+                        cursorColor          = Color.White,
+                        focusedContainerColor   = Color(0xFF1A1A1A),
+                        unfocusedContainerColor = Color(0xFF1A1A1A),
+                        focusedLabelColor    = TextSec,
+                        unfocusedLabelColor  = TextSec
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -765,11 +783,11 @@ fun CreateSubjectDialog(
                         },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = GreenOk),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                         enabled = !isLoading
                     ) {
                         if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        else Text("Create", color = Color.White, fontWeight = FontWeight.Bold)
+                        else Text("Create", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
                 }
             }

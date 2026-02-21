@@ -6,10 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.edunet.ui.HomeScreen
-import com.example.edunet.ui.LoginScreen
-import com.example.edunet.ui.SignUpScreen
-import com.example.edunet.ui.SplashScreen
+import com.example.edunet.ui.*
 import com.example.edunet.ui.session.StudentSessionScreen
 import com.example.edunet.ui.session.TeacherSessionScreen
 import java.net.URLDecoder
@@ -30,7 +27,7 @@ fun AppNavigation() {
 
         composable("login") {
             LoginScreen(
-                onLoginSuccess = { _ ->
+                onLoginSuccess     = { _ ->
                     navController.navigate("home") { popUpTo("login") { inclusive = true } }
                 },
                 onNavigateToSignUp = { navController.navigate("signup") }
@@ -39,7 +36,7 @@ fun AppNavigation() {
 
         composable("signup") {
             SignUpScreen(
-                onSignUpSuccess = { _ ->
+                onSignUpSuccess   = { _ ->
                     navController.navigate("home") { popUpTo("signup") { inclusive = true } }
                 },
                 onNavigateToLogin = {
@@ -63,39 +60,79 @@ fun AppNavigation() {
                     val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
                     val sEnc = URLEncoder.encode(subjectName, "UTF-8")
                     navController.navigate("student_session/$cEnc/$sEnc")
+                },
+                onOpenHistory = { subjectCode, subjectName ->
+                    val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
+                    val sEnc = URLEncoder.encode(subjectName, "UTF-8")
+                    navController.navigate("subject_history/$cEnc/$sEnc")
                 }
             )
         }
 
-        // Teacher session
+        // ── Teacher session ───────────────────────────────────────────────────
         composable(
-            route = "teacher_session/{teacherName}/{subjectName}/{subjectCode}",
+            route     = "teacher_session/{teacherName}/{subjectName}/{subjectCode}",
             arguments = listOf(
-                navArgument("teacherName")  { type = NavType.StringType },
-                navArgument("subjectName")  { type = NavType.StringType },
-                navArgument("subjectCode")  { type = NavType.StringType }
+                navArgument("teacherName") { type = NavType.StringType },
+                navArgument("subjectName") { type = NavType.StringType },
+                navArgument("subjectCode") { type = NavType.StringType }
             )
-        ) { backStack ->
+        ) { back ->
             TeacherSessionScreen(
-                teacherName = URLDecoder.decode(backStack.arguments?.getString("teacherName") ?: "", "UTF-8"),
-                subjectName = URLDecoder.decode(backStack.arguments?.getString("subjectName") ?: "", "UTF-8"),
-                subjectCode = URLDecoder.decode(backStack.arguments?.getString("subjectCode") ?: "", "UTF-8"),
-                onBack = { navController.popBackStack() }
+                teacherName = URLDecoder.decode(back.arguments?.getString("teacherName") ?: "", "UTF-8"),
+                subjectName = URLDecoder.decode(back.arguments?.getString("subjectName") ?: "", "UTF-8"),
+                subjectCode = URLDecoder.decode(back.arguments?.getString("subjectCode") ?: "", "UTF-8"),
+                onBack      = { navController.popBackStack() }
             )
         }
 
-        // Student session (subjectCode + subjectName)
+        // ── Student session (live join) ────────────────────────────────────────
         composable(
-            route = "student_session/{subjectCode}/{subjectName}",
+            route     = "student_session/{subjectCode}/{subjectName}",
             arguments = listOf(
                 navArgument("subjectCode") { type = NavType.StringType },
                 navArgument("subjectName") { type = NavType.StringType }
             )
-        ) { backStack ->
+        ) { back ->
             StudentSessionScreen(
-                subjectCode = URLDecoder.decode(backStack.arguments?.getString("subjectCode") ?: "", "UTF-8"),
-                subjectName = URLDecoder.decode(backStack.arguments?.getString("subjectName") ?: "", "UTF-8"),
-                onBack = { navController.popBackStack() }
+                subjectCode = URLDecoder.decode(back.arguments?.getString("subjectCode") ?: "", "UTF-8"),
+                subjectName = URLDecoder.decode(back.arguments?.getString("subjectName") ?: "", "UTF-8"),
+                onBack      = { navController.popBackStack() }
+            )
+        }
+
+        // ── Subject history ───────────────────────────────────────────────────
+        composable(
+            route     = "subject_history/{subjectCode}/{subjectName}",
+            arguments = listOf(
+                navArgument("subjectCode") { type = NavType.StringType },
+                navArgument("subjectName") { type = NavType.StringType }
+            )
+        ) { back ->
+            SubjectHistoryScreen(
+                subjectCode = URLDecoder.decode(back.arguments?.getString("subjectCode") ?: "", "UTF-8"),
+                subjectName = URLDecoder.decode(back.arguments?.getString("subjectName") ?: "", "UTF-8"),
+                onBack      = { navController.popBackStack() },
+                onRecover   = {
+                    val cEnc = back.arguments?.getString("subjectCode") ?: ""
+                    val sEnc = back.arguments?.getString("subjectName") ?: ""
+                    navController.navigate("data_recovery/$cEnc/$sEnc")
+                }
+            )
+        }
+
+        // ── P2P data recovery ─────────────────────────────────────────────────
+        composable(
+            route     = "data_recovery/{subjectCode}/{subjectName}",
+            arguments = listOf(
+                navArgument("subjectCode") { type = NavType.StringType },
+                navArgument("subjectName") { type = NavType.StringType }
+            )
+        ) { back ->
+            DataRecoveryScreen(
+                subjectCode = URLDecoder.decode(back.arguments?.getString("subjectCode") ?: "", "UTF-8"),
+                subjectName = URLDecoder.decode(back.arguments?.getString("subjectName") ?: "", "UTF-8"),
+                onBack      = { navController.popBackStack() }
             )
         }
     }
