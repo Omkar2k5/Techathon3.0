@@ -5,6 +5,7 @@ use reqwest::Client;
 use chrono::Utc;
 use crate::conversation::{ChatMessage, CONVERSATION_STORE, HostInfo, MessageType};
 use crate::tcp::LLM_CONNECTIONS;
+use crate::udp::LLM_UDP_PEERS;
 use std::time::Duration;
 use hostname;
 
@@ -102,29 +103,35 @@ pub async fn try_local_llm(req: &OllamaRequest) -> Result<String, String> {
 }
 
 pub async fn try_remote_llm(req: &OllamaRequest) -> Result<String, String> {
-    let connections = LLM_CONNECTIONS.lock().await;
-    
-    if connections.is_empty() {
-        return Err("No remote LLM connections available".to_string());
+    // Collect peer IPs from both sources:
+    // 1. LLM_CONNECTIONS  — TCP-handshaked peers (usually empty when port 7878 is firewalled)
+    // 2. LLM_UDP_PEERS    — UDP-discovered peers with has_llm=true (works without TCP)
+    let mut peer_hosts: Vec<String> = {
+        let connections = LLM_CONNECTIONS.lock().await;
+        connections.values().map(|(host, _)| host.clone()).collect()
+    };
+    {
+        let udp_peers = LLM_UDP_PEERS.lock().await;
+        for ip in udp_peers.iter() {
+            if !peer_hosts.contains(ip) {
+                peer_hosts.push(ip.clone());
+            }
+        }
     }
 
-    // Try each known LLM peer via their EduNet server (port 8080, always open)
-    // We call /api/llm/proxy which forwards to their local Ollama
-    let peers: Vec<(String, String)> = connections
-        .iter()
-        .map(|(peer, (host, _port))| (peer.clone(), host.clone()))
-        .collect();
-    drop(connections); // release lock before async calls
+    if peer_hosts.is_empty() {
+        return Err("No LLM peers discovered yet — waiting for UDP broadcast".to_string());
+    }
 
-    for (peer, host) in peers {
+    let client = Client::builder()
+        .timeout(REMOTE_REQUEST_TIMEOUT)
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("HTTP client error: {}", e))?;
+
+    for host in peer_hosts {
         let proxy_url = format!("http://{}:8080/api/llm/proxy", host);
         println!("Attempting remote LLM via EduNet proxy at {}", proxy_url);
-
-        let client = Client::builder()
-            .timeout(REMOTE_REQUEST_TIMEOUT)
-            .connect_timeout(Duration::from_secs(10))
-            .build()
-            .map_err(|e| format!("HTTP client error: {}", e))?;
 
         match client.post(&proxy_url).json(req).send().await {
             Ok(response) if response.status().is_success() => {
@@ -132,10 +139,10 @@ pub async fn try_remote_llm(req: &OllamaRequest) -> Result<String, String> {
                     .map_err(|e| format!("Failed to read proxy response: {}", e))?;
                 match process_ollama_response(&body) {
                     Ok(result) => {
-                        println!("Remote LLM via {} succeeded", peer);
+                        println!("Remote LLM via {} succeeded", host);
                         return Ok(result);
                     }
-                    Err(e) => println!("Proxy parse error from {}: {}", peer, e),
+                    Err(e) => println!("Proxy parse error from {}: {}", host, e),
                 }
             }
             Ok(response) => println!("Proxy at {} returned {}", proxy_url, response.status()),
@@ -143,7 +150,7 @@ pub async fn try_remote_llm(req: &OllamaRequest) -> Result<String, String> {
         }
     }
 
-    Err("No available LLM proxy responded successfully".to_string())
+    Err("No LLM peer proxy responded — check that the LLM host's EduNet is running".to_string())
 }
 
 /// LLM proxy endpoint — peers call this to use our local Ollama via port 8080

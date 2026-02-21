@@ -22,9 +22,12 @@ const PEER_TIMEOUT: Duration = Duration::from_secs(60);
 static LAST_SEEN: Lazy<Arc<Mutex<HashMap<String, DateTime<Utc>>>>> = 
     Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
-// Track last broadcast time
 static LAST_BROADCAST: Lazy<Arc<Mutex<Option<DateTime<Utc>>>>> = 
     Lazy::new(|| Arc::new(Mutex::new(None)));
+
+/// IPs of peers that advertised LLM=true via UDP — no TCP needed
+pub static LLM_UDP_PEERS: Lazy<Arc<Mutex<HashSet<String>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(HashSet::new())));
 
 #[derive(Debug, Serialize, Deserialize)]
 struct BroadcastMessage {
@@ -129,7 +132,13 @@ pub async fn receive_broadcast(received_ips: Arc<Mutex<HashSet<String>>>) -> Res
                         last_seen.insert(ip.clone(), now);
                         
                         let mut ips = received_ips.lock().await;
-                        ips.insert(ip);
+                        ips.insert(ip.clone());
+
+                        // Track LLM-capable peers separately for fallback
+                        if broadcast_msg.has_llm {
+                            let mut llm_peers = LLM_UDP_PEERS.lock().await;
+                            llm_peers.insert(ip);
+                        }
                     }
                 }
             }
