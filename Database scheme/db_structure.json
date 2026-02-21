@@ -1,0 +1,102 @@
+{
+    "collections": {
+        "users": {
+            "description": "Stores user accounts including both teachers and students",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Primary ID"
+                },
+                "name": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Full name of user"
+                },
+                "email": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Login email"
+                },
+                "role": {
+                    "type": "String",
+                    "required": true,
+                    "description": "\"teacher\" or \"student\""
+                },
+                "created_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Account creation time"
+                },
+                "is_active": {
+                    "type": "Boolean",
+                    "required": true,
+                    "description": "Account status"
+                }
+            }
+        },
+        "subjects": {
+            "description": "Stores subjects/courses created by teachers",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Subject ID"
+                },
+                "subject_name": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Subject name"
+                },
+                "subject_code": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Subject code (e.g., DS101)"
+                },
+                "teacher_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Reference to teacher (users._id)"
+                },
+                "created_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Creation timestamp"
+                },
+                "is_active": {
+                    "type": "Boolean",
+                    "required": true,
+                    "description": "Subject status"
+                }
+            }
+        },
+        "subject_enrollments": {
+            "description": "Stores the many-to-many relationship between students and subjects",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Enrollment ID"
+                },
+                "subject_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "subjects._id",
+                    "description": "Reference to subjects._id"
+                },
+                "student_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Reference to users._id"
+                },
+                "enrolled_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Enrollment date"
+                }
+            }
+        }
+    }
+}
