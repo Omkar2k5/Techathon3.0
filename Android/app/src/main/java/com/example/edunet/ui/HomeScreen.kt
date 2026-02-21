@@ -34,14 +34,14 @@ import com.example.edunet.data.repository.SubjectItem
 import com.example.edunet.data.repository.SubjectResult
 import kotlinx.coroutines.launch
 
-// ─── Colours ─────────────────────────────────────────────────────────────────
-private val BgDark    = Color(0xFF0F0F1A)
-private val CardDark  = Color(0xFF1C1C2E)
-private val Accent    = Color(0xFF6C63FF)
-private val AccentAlt = Color(0xFF00D4FF)
-private val GreenOk   = Color(0xFF4CAF50)
+// ─── B&W Colours ─────────────────────────────────────────────────────────────
+private val BgDark    = Color(0xFF000000)
+private val CardDark  = Color(0xFF111111)
+private val Accent    = Color(0xFFFFFFFF)   // primary interactive = white
+private val AccentAlt = Color(0xFFCCCCCC)
+private val GreenOk   = Color(0xFFFFFFFF)   // teacher positive = white
 private val TextPri   = Color(0xFFFFFFFF)
-private val TextSec   = Color(0xFFB0B0C8)
+private val TextSec   = Color(0xFF888888)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,7 +121,7 @@ fun StudentHomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Brush.horizontalGradient(listOf(Accent, AccentAlt))
+                        Color(0xFF111111)
                     )
                     .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
@@ -314,7 +314,7 @@ fun TeacherHomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Brush.horizontalGradient(listOf(Color(0xFF1B5E20), GreenOk))
+                        Color(0xFF111111)
                     )
                     .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {

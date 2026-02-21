@@ -16,6 +16,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.edunet.ui.viewmodel.AuthUiState
 import com.example.edunet.ui.viewmodel.AuthViewModel
 
+// ─── B&W palette (local) ─────────────────────────────
+private val BgPage   = Color(0xFF000000)
+private val BgCard   = Color(0xFF111111)
+private val Border   = Color(0xFF333333)
+private val TextPri  = Color(0xFFFFFFFF)
+private val TextSec  = Color(0xFF999999)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -25,11 +32,9 @@ fun LoginScreen(
 ) {
     var isStaffSelected by remember { mutableStateOf(false) }
     var emailOrId by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var password  by remember { mutableStateOf("") }
+    val uiState   by authViewModel.uiState.collectAsState()
 
-    val uiState by authViewModel.uiState.collectAsState()
-
-    // Navigate on success
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
             onLoginSuccess((uiState as AuthUiState.Success).role)
@@ -38,126 +43,122 @@ fun LoginScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F6FA)),
+        modifier = Modifier.fillMaxSize().background(BgPage),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
+            modifier = Modifier.fillMaxWidth().padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Welcome to EDUNET",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E1E2C)
-            )
+            // Logo mark
+            Text("EDUNET", fontSize = 36.sp, fontWeight = FontWeight.ExtraBold,
+                color = TextPri, letterSpacing = 3.sp)
+            Spacer(Modifier.height(6.dp))
+            Text("Offline Knowledge Sharing", fontSize = 13.sp, color = TextSec,
+                letterSpacing = 1.sp)
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(40.dp))
 
-            Text(
-                text = "Offline Knowledge Sharing System",
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Role Selector
-            TabRow(
-                selectedTabIndex = if (isStaffSelected) 1 else 0,
-                containerColor = Color.Transparent,
-                contentColor = Color(0xFF1E1E2C),
-                modifier = Modifier.fillMaxWidth(0.8f)
+            // Card container
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = BgCard,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Tab(
-                    selected = !isStaffSelected,
-                    onClick = { isStaffSelected = false },
-                    text = { Text("Student", fontWeight = if (!isStaffSelected) FontWeight.Bold else FontWeight.Normal) }
-                )
-                Tab(
-                    selected = isStaffSelected,
-                    onClick = { isStaffSelected = true },
-                    text = { Text("Staff", fontWeight = if (isStaffSelected) FontWeight.Bold else FontWeight.Normal) }
-                )
-            }
+                Column(modifier = Modifier.padding(24.dp)) {
 
-            Spacer(modifier = Modifier.height(24.dp))
+                    // Role tabs
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        listOf("Student" to false, "Staff" to true).forEach { (label, isStaff) ->
+                            val selected = isStaffSelected == isStaff
+                            Surface(
+                                onClick = { isStaffSelected = isStaff },
+                                modifier = Modifier.weight(1f).height(40.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (selected) TextPri else Color.Transparent,
+                                contentColor = if (selected) BgPage else TextSec
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(label, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 14.sp)
+                                }
+                            }
+                        }
+                    }
 
-            OutlinedTextField(
-                value = emailOrId,
-                onValueChange = { emailOrId = it },
-                label = { Text(if (isStaffSelected) "Staff Email" else "Student Email") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color(0xFF1E1E2C),
-                    unfocusedTextColor = Color(0xFF1E1E2C),
-                    focusedIndicatorColor = Color(0xFF1E1E2C),
-                    unfocusedIndicatorColor = Color.LightGray,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    cursorColor = Color(0xFF1E1E2C)
-                )
-            )
+                    Spacer(Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    // Email field
+                    OutlinedTextField(
+                        value = emailOrId,
+                        onValueChange = { emailOrId = it },
+                        label = { Text(if (isStaffSelected) "Staff Email" else "Student Email",
+                            color = TextSec, fontSize = 13.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor     = TextPri,
+                            unfocusedTextColor   = TextPri,
+                            focusedBorderColor   = TextPri,
+                            unfocusedBorderColor = Border,
+                            cursorColor          = TextPri,
+                            focusedContainerColor   = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                        )
+                    )
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color(0xFF1E1E2C),
-                    unfocusedTextColor = Color(0xFF1E1E2C),
-                    focusedIndicatorColor = Color(0xFF1E1E2C),
-                    unfocusedIndicatorColor = Color.LightGray,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    cursorColor = Color(0xFF1E1E2C)
-                )
-            )
+                    Spacer(Modifier.height(14.dp))
 
-            // Error message
-            if (uiState is AuthUiState.Error) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = (uiState as AuthUiState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 13.sp
-                )
-            }
+                    // Password field
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password", color = TextSec, fontSize = 13.sp) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor     = TextPri,
+                            unfocusedTextColor   = TextPri,
+                            focusedBorderColor   = TextPri,
+                            unfocusedBorderColor = Border,
+                            cursorColor          = TextPri,
+                            focusedContainerColor   = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                        )
+                    )
 
-            Spacer(modifier = Modifier.height(28.dp))
+                    if (uiState is AuthUiState.Error) {
+                        Spacer(Modifier.height(10.dp))
+                        Text((uiState as AuthUiState.Error).message,
+                            color = Color(0xFFFF4444), fontSize = 13.sp)
+                    }
 
-            Button(
-                onClick = { authViewModel.login(emailOrId, password) },
-                enabled = uiState !is AuthUiState.Loading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E1E2C))
-            ) {
-                if (uiState is AuthUiState.Loading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(text = "Login", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(Modifier.height(24.dp))
+
+                    // Login button
+                    Button(
+                        onClick = { authViewModel.login(emailOrId, password) },
+                        enabled = uiState !is AuthUiState.Loading,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = TextPri)
+                    ) {
+                        if (uiState is AuthUiState.Loading) {
+                            CircularProgressIndicator(color = BgPage, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("Login", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = BgPage)
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = { onNavigateToSignUp() }) {
-                Text("Don't have an account? Sign Up", color = Color(0xFF1E1E2C))
+            Spacer(Modifier.height(20.dp))
+            TextButton(onClick = onNavigateToSignUp) {
+                Text("Don't have an account? ", color = TextSec, fontSize = 14.sp)
+                Text("Sign Up", color = TextPri, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
         }
     }

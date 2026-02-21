@@ -45,7 +45,7 @@ fun SplashScreen(onSplashFinished: (isLoggedIn: Boolean) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1E1E2C)),
+            .background(Color(0xFF000000)),
         contentAlignment = Alignment.Center
     ) {
         Column(

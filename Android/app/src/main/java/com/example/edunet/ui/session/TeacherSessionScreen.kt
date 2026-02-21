@@ -41,11 +41,11 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 
-private val BgDark   = Color(0xFF0F0F1A)
-private val CardDark = Color(0xFF1C1C2E)
-private val GreenOk  = Color(0xFF4CAF50)
+private val BgDark   = Color(0xFF000000)
+private val CardDark = Color(0xFF111111)
+private val GreenOk  = Color(0xFFFFFFFF)
 private val TextPri  = Color(0xFFFFFFFF)
-private val TextSec  = Color(0xFFB0B0C8)
+private val TextSec  = Color(0xFF888888)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,7 +156,7 @@ fun TeacherSessionScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(Color(0xFF1B5E20), GreenOk)))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF111111), Color(0xFF1A1A1A))))
                     .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
                 Column {

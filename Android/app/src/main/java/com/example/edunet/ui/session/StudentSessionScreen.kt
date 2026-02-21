@@ -39,11 +39,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
-private val BgDark   = Color(0xFF0F0F1A)
-private val CardDark = Color(0xFF1C1C2E)
-private val Accent   = Color(0xFF6C63FF)
+private val BgDark   = Color(0xFF000000)
+private val CardDark = Color(0xFF111111)
+private val Accent   = Color(0xFFFFFFFF)
 private val TextPri  = Color(0xFFFFFFFF)
-private val TextSec  = Color(0xFFB0B0C8)
+private val TextSec  = Color(0xFF888888)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,7 +163,7 @@ fun StudentSessionScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(Accent, Color(0xFF00D4FF))))
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF111111), Color(0xFF1A1A1A))))
                     .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
                 Column {
@@ -282,9 +282,7 @@ fun StudentSessionScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D4FF))
                         ) {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(10.dp))
-                            Text("Scan QR Code", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                            Text("📷  Scan QR Code", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                         }
 
                         Spacer(Modifier.height(20.dp))
