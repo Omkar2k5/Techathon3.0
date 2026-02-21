@@ -5,8 +5,8 @@
  */
 import { MongoClient, ObjectId } from "mongodb";
 
-const MONGO_URI = "mongodb://localhost:27017";
-const DB_NAME = "neuromesh_lab";
+const MONGO_URI = "mongodb+srv://root:root123@techathon.h1ehyle.mongodb.net/?retryWrites=true&w=majority";
+const DB_NAME = "techathon";
 
 async function seed() {
     const client = new MongoClient(MONGO_URI);
