@@ -28,14 +28,14 @@ export const Navigation: React.FC<NavigationProps> = ({
                         </div>
                         <div>
                             <h1 className="text-xl md:text-2xl font-bold gradient-text">
-                                NeuroMesh
+                                NodeNetwork
                             </h1>
                             <div className="flex items-center gap-2 mt-1">
                                 <Workflow className="w-3 h-3 text-cyan-400" />
                                 <p className="text-xs text-gray-400 hidden sm:block">
-                                    {currentPage === 'chat' ? 'Neural Intelligence Chat' : 'Neural Mesh Dashboard'}
+                                    {currentPage === 'chat' ? 'Network Chat' : 'Node Network Dashboard'}
                                 </p>
-                                <p className="text-xs text-gray-400 sm:hidden">Neural AI</p>
+                                <p className="text-xs text-gray-400 sm:hidden">Node Network</p>
                             </div>
                         </div>
                     </div>

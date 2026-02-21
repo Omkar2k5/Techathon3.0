@@ -1,71 +1,47 @@
-# NeuroMesh - Distributed Neural Intelligence Network
+# Core Distributed Network Node
 
-NeuroMesh is a peer-to-peer neural network that enables seamless sharing of AI capabilities across multiple devices. Connect with friends and access distributed neural processing power effortlessly.
+A high-performance, distributed peer-to-peer networking framework built. This project enables seamless node discovery, secure local network communication, and decentralized state synchronization. 
 
-## Quick Start
+## Features
 
-### Prerequisites
-- [Ollama](https://ollama.ai/) installed (neural engine backend)
-- Windows Firewall configured (automatic setup included)
+- **Zero-Configuration Networking**: Automatic peer discovery on local networks via UDP broadcasts.
+- **Reliable State Synchronization**: TCP-based communication layer for consistent data replication across connected nodes.
+- **Decentralized Architecture**: No central server required; all participating nodes can handle network tasks dynamically.
+- **Cross-Platform**: Compiled to a single standalone executable with an embedded management dashboard.
 
-### Setup
+## Prerequisites
 
-1. **Download NeuroMesh**: Get the latest release or build from source
-2. **Install Ollama**: Download from [ollama.ai](https://ollama.ai/)
-3. **Pull a model**: `ollama pull llama3.2` (or any model you prefer)
-4. **Configure Firewall**: Run `admin-firewall-fix.bat` as Administrator
-5. **Start NeuroMesh**: Run `run-neuromesh.bat`
+- Windows OS (for the included setup scripts)
+- Local Network access (LAN/WLAN)
 
-### Firewall Configuration (Required)
+## Setup and Installation
 
-**Run as Administrator:**
+1. **Download/Build**: Get the latest binary or build directly from the source.
+2. **Configure Network**: Run `fix-firewall.bat` as an Administrator to allow peer-to-peer traffic.
+3. **Start Node**: Run the main executable (`neuromesh.bat` or `neuromesh.exe`).
+4. **Dashboard**: Navigate to the local dashboard (default `http://localhost:3000`) to view network topology and connected peers.
+
+## Network Configuration (Manual)
+
+If you prefer to configure your firewall manually instead of using the provided script, open an Administrator command prompt and run:
+
 ```cmd
-netsh advfirewall firewall add rule name="NeuroMesh TCP" dir=in action=allow protocol=TCP localport=7878
-netsh advfirewall firewall add rule name="NeuroMesh UDP" dir=in action=allow protocol=UDP localport=5000
-netsh advfirewall firewall add rule name="Ollama" dir=in action=allow protocol=TCP localport=11434
-```
-
-Or simply run `admin-firewall-fix.bat` as Administrator.
-
-## Usage
-
-### Hosting Neural Engine
-1. Run `run-neuromesh.bat`
-2. Your neural engine will be automatically shared with discovered peers
-3. Open web interface at `http://localhost:3000`
-
-### Connecting to Friends
-1. Ensure both devices are on the same network
-2. Run NeuroMesh on both devices
-3. Neural nodes will be automatically discovered
-4. Access distributed neural processing through the web interface
-
-## Files
-
-- `run-neuromesh.bat` - Main startup script
-- `admin-firewall-fix.bat` - Firewall configuration (run as admin)
-- `target/release/neuromesh.exe` - Main executable
-- `FRIEND_SETUP_GUIDE.md` - Setup guide for friends
-
-## Troubleshooting
-
-### Common Issues
-- **Peers not found**: Check firewall rules and network connectivity
-- **LLM access denied**: Ensure Ollama is running and accessible
-- **Connection drops**: Normal behavior, system recovers automatically
-
-### Network Requirements
-- Same WiFi network or VPN
-- Ports 5000 (UDP), 7878 (TCP), 11434 (TCP) open
-- No AP isolation on router
-
-## Building from Source
-
-```bash
-git clone <repository-url>
-cd neuromesh
-cargo build --release
+netsh advfirewall firewall add rule name="Node TCP" dir=in action=allow protocol=TCP localport=7878
+netsh advfirewall firewall add rule name="Node UDP" dir=in action=allow protocol=UDP localport=5000
 ```
 
 ## Security Note
-NeuroMesh automatically shares neural processing capabilities with discovered peers. Only use on trusted networks.
+
+This application automatically discovers and connects to other instances running on the same local network subnet. Only run this software on trusted networks.
+
+## Building from Source
+
+Ensure you have Rust and Cargo installed, as well as Node.js for the frontend interface.
+
+```bash
+# Build the application
+cargo build --release
+```
+
+## License
+MIT License

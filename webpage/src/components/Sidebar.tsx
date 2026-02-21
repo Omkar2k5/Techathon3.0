@@ -30,8 +30,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full animate-pulse border-2 border-gray-900 ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold gradient-text">NeuroMesh</h1>
-                        <p className="text-xs text-gray-400">Neural Intelligence</p>
+                        <h1 className="text-lg font-bold gradient-text">NodeNetwork</h1>
+                        <p className="text-xs text-gray-400">Distributed Computing</p>
                     </div>
                 </div>
             </div>
@@ -53,8 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         onClick={() => onNavigate('chat')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${currentPage === 'chat'
-                                ? 'bg-gray-700/50 text-white border border-gray-600/50'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                            ? 'bg-gray-700/50 text-white border border-gray-600/50'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                             }`}
                     >
                         <MessageCircle className="w-4 h-4" />
@@ -64,12 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         onClick={() => onNavigate('peers')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${currentPage === 'peers'
-                                ? 'bg-gray-700/50 text-white border border-gray-600/50'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                            ? 'bg-gray-700/50 text-white border border-gray-600/50'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                             }`}
                     >
                         <Users className="w-4 h-4" />
-                        <span>Neural Mesh</span>
+                        <span>Node Network</span>
                         {peerCount > 0 && (
                             <span className="ml-auto bg-cyan-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
                                 {peerCount}
@@ -107,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex items-center gap-2 text-xs">
                         <div className={`w-2 h-2 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
                         <span className={`font-medium ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
-                            {isConnected ? 'Neural Engine Online' : 'Offline'}
+                            {isConnected ? 'Processing Engine Online' : 'Offline'}
                         </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-400">

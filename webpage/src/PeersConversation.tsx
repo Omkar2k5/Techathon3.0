@@ -69,7 +69,7 @@ export function PeersConversation() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold gradient-text mb-2">Neural Mesh Dashboard</h2>
+              <h2 className="text-3xl font-bold gradient-text mb-2">Node Network Dashboard</h2>
               <p className="text-gray-400">Monitor and manage your neural mesh connections</p>
             </div>
             <button
@@ -108,9 +108,9 @@ export function PeersConversation() {
               </div>
               <div className="absolute -inset-2 bg-gradient-to-r from-gray-600/20 to-gray-700/20 rounded-3xl blur-xl"></div>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-3">No Neural Nodes Detected</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">No Network Nodes Detected</h3>
             <p className="text-gray-400 max-w-lg mx-auto mb-6 leading-relaxed">
-              No peer conversations are currently available. Make sure other NeuroMesh nodes are online and connected to the same network.
+              No peer conversations are currently available. Make sure other Network nodes are online and connected to the same network.
             </p>
             <div className="glass p-6 rounded-xl max-w-md mx-auto">
               <h4 className="text-sm font-semibold text-cyan-400 mb-3">Quick Setup Guide:</h4>
@@ -121,11 +121,11 @@ export function PeersConversation() {
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                  <span>Check firewall settings allow NeuroMesh</span>
+                  <span>Check firewall settings allow NodeNetwork</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                  <span>Verify Ollama is running on peer devices</span>
+                  <span>Verify Processing Engine is running on peer devices</span>
                 </li>
               </ul>
             </div>
@@ -144,7 +144,7 @@ export function PeersConversation() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <Users className="w-6 h-6 text-cyan-400" />
-                  <h3 className="text-2xl font-bold gradient-text">Neural Mesh Network</h3>
+                  <h3 className="text-2xl font-bold gradient-text">Node Network</h3>
                 </div>
                 <div className="text-sm text-gray-400">
                   {peerIps.length} neural node{peerIps.length !== 1 ? 's' : ''} in mesh
@@ -194,7 +194,7 @@ export function PeersConversation() {
                           </div>
                           {peer.host_info.is_llm_host && (
                             <div className="px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
-                              <span className="text-xs text-green-400 font-medium">Neural Host</span>
+                              <span className="text-xs text-green-400 font-medium">Processing Host</span>
                             </div>
                           )}
                         </div>
@@ -220,7 +220,7 @@ export function PeersConversation() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-semibold text-cyan-400 mb-2">
-                        Neural Node: {selectedPeer}
+                        Network Node: {selectedPeer}
                       </h2>
                       <div className="flex items-center gap-4 text-sm text-gray-400">
                         <div className="flex items-center gap-2">
@@ -231,12 +231,12 @@ export function PeersConversation() {
                           {peerConversations[selectedPeer].host_info.is_llm_host ? (
                             <>
                               <Wifi className="w-4 h-4 text-green-400" />
-                              <span className="text-green-400 font-medium">Neural Engine Online</span>
+                              <span className="text-green-400 font-medium">Processing Engine Online</span>
                             </>
                           ) : (
                             <>
                               <WifiOff className="w-4 h-4 text-gray-400" />
-                              <span>No Neural Engine</span>
+                              <span>No Processing Engine</span>
                             </>
                           )}
                         </div>

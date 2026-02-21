@@ -131,7 +131,7 @@ function ChatPage({
                 <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl mb-4 mx-auto">
                   <Sparkles className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold gradient-text mb-3">Welcome to NeuroMesh</h2>
+                <h2 className="text-2xl font-bold gradient-text mb-3">Welcome to NodeNetwork</h2>
                 <p className="text-gray-400 max-w-md mx-auto">
                   Your distributed neural intelligence network. Ask me anything or connect with other neural nodes.
                 </p>
@@ -228,7 +228,7 @@ function ChatPage({
                           <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                           <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                         </div>
-                        <span className="text-gray-400 text-sm">Neural engine is thinking...</span>
+                        <span className="text-gray-400 text-sm">Processing engine is computing...</span>
                       </div>
                     </div>
                   </div>
@@ -249,7 +249,7 @@ function ChatPage({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message NeuroMesh..."
+                placeholder="Message Network..."
                 className="w-full bg-gray-800/50 border border-gray-700/50 rounded-xl px-4 py-3 pr-12 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-500/50 resize-none min-h-[52px] max-h-32"
                 disabled={isTyping}
                 rows={1}
