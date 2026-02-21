@@ -1,202 +1,278 @@
-# EduNet Lab Portal  
-LAN-Based Offline Practical Management System
+# EduNet Lab Portal
+LAN-Based Practical Lab Management System
 
-EduNet Lab Portal is a LAN-based, fully offline college lab management system built on top of the EduNet / NeuroMesh architecture. It enables staff to conduct practical sessions and students to submit lab work using only a local WiFi network, without any internet or cloud dependency.
+EduNet Lab Portal is a college lab management system that enables staff to conduct practical sessions and students to enroll in subjects and submit lab work. The system uses a Python/FastAPI backend connected to a MongoDB Atlas cloud database, and a React/TypeScript frontend.
 
 ---
 
 ## Problem Statement
 
-Most existing college lab management systems depend on the internet and centralized servers, making them unreliable in low-resource or poor-network environments. These limitations are common in regular college laboratories.
-
-EduNet Lab Portal addresses this problem by providing a lightweight, offline-first solution that works entirely on a local network.
+Most existing college lab management systems depend on internet and centralized servers, making them unreliable in low-resource or poor-network environments. EduNet Lab Portal provides a structured, cloud-backed solution for managing practical sessions with role-based access for teachers and students.
 
 ---
 
 ## Objectives
 
-- Enable staff to manage practical sessions efficiently  
-- Allow students to discover and join active lab sessions over LAN  
-- Enforce time limits and submission deadlines  
-- Operate reliably on low-end systems and weak networks  
-- Eliminate the need for cloud services or internet access  
+- Enable staff (teachers) to create and manage subjects and lab sessions efficiently
+- Allow students to discover and join subjects using a class code
+- Enforce role-based access control for teachers and students
+- Provide a clean, modern web interface for both roles
+- Sync data reliably via MongoDB Atlas
 
 ---
 
 ## Key Features
 
-- Role-based authentication for staff and students  
-- Subject-wise organization of lab work  
-- Assignment and practical session creation by staff  
-- Time-bound lab sessions with strict deadlines  
-- Automatic discovery of active lab sessions over LAN  
-- File upload with configurable format restrictions  
-- Submission tracking with CSV export  
-- Local MongoDB database  
-- Optimized for low-resource college lab environments  
+- Role-based authentication (teacher / student) via email & password
+- Student self-registration (signup) and login
+- Subject creation by teachers with unique subject codes
+- Students can join any subject using a class code
+- Enrolled subject listing per student
+- Teacher dashboard showing subject-wise student enrollment counts
+- RESTful API with FastAPI and automatic OpenAPI docs
 
 ---
 
 ## High-Level Architecture
 
-Staff PC (Host)  
-- Rust Backend (EduNet)  
-- MongoDB (Local)  
-- UDP Broadcast for session discovery  
-- Local lab storage directory  
-
-Student PCs  
-- Web frontend  
-- LAN-based session discovery  
-- File submission over LAN  
-
----
-
-## Staff Workflow
-
-1. Login as staff  
-2. View subjects created by the staff member  
-3. Open a subject  
-4. Create an assignment by specifying:  
-   - Assignment name  
-   - Sample practical file  
-   - Allowed file types (.cpp, .py, .java, .pdf)  
-   - Time limit and submission deadline  
-5. Start the lab session  
-6. Monitor active session status and student submissions  
-7. Export submission details as a CSV file  
-
----
-
-## Student Workflow
-
-1. Login as student  
-2. View enrolled subjects  
-3. Automatically discover active assignments on the local network  
-4. Download the sample practical file  
-5. Complete the task locally  
-6. Upload the solution before the deadline  
-7. Receive submission confirmation  
-
----
-
-## Database Details
-
-Database: MongoDB  
-Database Name: neuromesh_lab  
-Connection: mongodb://localhost:27017  
-
-Collections used:  
-- users  
-- subjects  
-- subject_enrollments  
-- assignments  
-- submissions  
-
-MongoDB stores only metadata. All uploaded files are stored on disk.
-
----
-
-## File Storage Structure
-
-/lab_storage/  
-- subject_<code>/  
-  - assignment_<id>/  
-    - sample.pdf  
-    - submissions/  
-      - <roll_no>_<timestamp>.cpp  
-      - <roll_no>_<timestamp>.py  
+```
+React Frontend (Vite + TypeScript)
+        |
+        | HTTP/REST API calls
+        v
+Python FastAPI Backend (port 8000)
+        |
+        | PyMongo driver (SRV URI)
+        v
+MongoDB Atlas (techathon database)
+   ├── users
+   ├── subjects
+   └── subject_enrollments
+```
 
 ---
 
 ## Technology Stack
 
 ### Backend
-- Rust  
-- EduNet / NeuroMesh Core  
-- MongoDB (Rust driver)  
-- UDP for session discovery  
-- TCP / HTTP for APIs and file uploads  
+- **Language**: Python 3.11+
+- **Framework**: FastAPI 0.111
+- **Server**: Uvicorn (ASGI)
+- **Database Driver**: PyMongo 4.7 (with SRV support)
+- **Validation**: Pydantic v2
 
 ### Frontend
-- React with TypeScript  
-- Vite  
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS + shadcn/ui (Radix UI)
+- **HTTP Client**: Native `fetch` API
+- **State Management**: TanStack React Query
+
+### Database
+- **MongoDB Atlas** (cloud-hosted)
+- **Database Name**: `techathon`
+- **Connection**: SRV URI (see setup below)
 
 ---
 
-## Network Ports
+## Database Collections
 
-- UDP Discovery: 5000  
-- Backend API: 7878  
-- MongoDB: 27017  
-- Ollama (optional): 11434  
+| Collection            | Purpose                                          |
+|-----------------------|--------------------------------------------------|
+| `users`               | Stores all teacher and student accounts          |
+| `subjects`            | Stores subjects created by teachers              |
+| `subject_enrollments` | Tracks which students are enrolled in which subjects |
+
+### `users` document structure
+```json
+{
+  "_id": ObjectId,
+  "name": "string",
+  "email": "string",
+  "password": "string (plain text)",
+  "role": "teacher | student",
+  "roll_no": "string | null",
+  "is_active": true,
+  "created_at": "ISO datetime string"
+}
+```
+
+### `subjects` document structure
+```json
+{
+  "_id": ObjectId,
+  "subject_name": "string",
+  "subject_code": "string (unique, uppercase)",
+  "teacher_id": ObjectId,
+  "is_active": true,
+  "created_at": "ISO datetime string"
+}
+```
+
+### `subject_enrollments` document structure
+```json
+{
+  "_id": ObjectId,
+  "student_id": ObjectId,
+  "subject_id": ObjectId,
+  "enrolled_at": "datetime"
+}
+```
+
+---
+
+## API Endpoints
+
+| Method | Endpoint                          | Description                              |
+|--------|-----------------------------------|------------------------------------------|
+| GET    | `/health`                         | Health check                             |
+| POST   | `/login`                          | Login with email & password              |
+| POST   | `/signup`                         | Create a new student or teacher account  |
+| GET    | `/student/subjects/{student_id}`  | Get all subjects a student is enrolled in|
+| POST   | `/student/join`                   | Enroll a student in a subject by code    |
+| GET    | `/teacher/subjects/{teacher_id}`  | Get all subjects created by a teacher    |
+| POST   | `/teacher/subjects`               | Create a new subject                     |
+
+> **API Docs**: FastAPI auto-generates interactive API docs at `http://localhost:8000/docs` when running locally.
+
+---
+
+## Teacher Workflow
+
+1. Login with teacher email and password (e.g., `ahmed@edunet.in` / `teacher123`)
+2. View all subjects you have created on the dashboard
+3. Create a new subject by providing a **subject name** and a **unique subject code**
+4. Share the subject code with students so they can join
+5. View enrollment counts per subject
+
+---
+
+## Student Workflow
+
+1. Sign up with name, email, password and role `student` (or login if already registered)
+2. View your enrolled subjects on the dashboard
+3. Use the **"Join Class"** button and enter the subject code provided by your teacher to enroll
+4. Enrolled subjects appear on your dashboard with the teacher name
 
 ---
 
 ## Setup Instructions
 
 ### Prerequisites
-- MongoDB installed and running locally  
-- Rust toolchain installed  
-- Node.js installed  
-- All systems connected to the same WiFi or LAN  
-
-### Backend Setup
-- Build the backend using Cargo  
-- Run the compiled EduNet binary  
-- Ensure MongoDB is running  
-
-### Frontend Setup
-- Install dependencies using npm  
-- Start the development server  
+- Python 3.11 or higher
+- Node.js 18 or higher
+- A MongoDB Atlas account with the `techathon` database and the three collections above
 
 ---
 
-## Security Model
+### 1. Backend Setup
 
-- LAN-only access  
-- Role-based authorization  
-- File type validation  
-- Strict deadline enforcement  
-- No external network or cloud usage  
+```bash
+# Navigate to the backend folder
+cd backend
+
+# Create and activate a virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS/Linux
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the backend server
+uvicorn main:app --reload --port 8000
+```
+
+The backend will be available at: `http://localhost:8000`
+Interactive API docs: `http://localhost:8000/docs`
+
+> **MongoDB URI**: The connection string in `backend/main.py` is already configured to connect to the MongoDB Atlas `techathon` database. If credentials change, update the `MONGO_URI` variable in `main.py`.
+
+---
+
+### 2. Frontend Setup
+
+> **Note**: The frontend lives in the `webpage` folder inside the `Technathon 3.0 Wasim` directory. Run it from there.
+
+```bash
+# Navigate to the frontend folder
+cd "../Technathon 3.0 Wasim/webpage"
+
+# Install dependencies (first time only)
+npm install
+
+# Start the development server
+npm run dev
+```
+
+The frontend will be available at: `http://localhost:5173`
+
+> The Vite dev server is configured to proxy all `/api` requests to the Rust backend on port 8080. For the Python backend, make sure the frontend API calls point to `http://localhost:8000`.
+
+---
+
+## Network Ports
+
+| Service            | Port   |
+|--------------------|--------|
+| Python FastAPI     | 8000   |
+| Vite Dev Server    | 5173   |
+| Rust Backend (EduNet / Wasim) | 8080 |
+| MongoDB Atlas      | Cloud (SRV) |
+
+---
+
+## Sample Test Credentials
+
+### Teachers
+| Name               | Email              | Password     |
+|--------------------|-------------------|--------------|
+| Prof. Ahmed Khan   | ahmed@edunet.in   | teacher123   |
+| Dr. Priya Sharma   | priya@edunet.in   | teacher123   |
+
+### Students
+| Name         | Roll No    | Email                              | Password    |
+|--------------|------------|----------------------------------  |-------------|
+| Aarav Mehta  | 21AIML101  | 21aiml101@student.edunet.in        | student123  |
+| Sneha Patil  | 21AIML102  | abc@gmail.com                      | student123  |
+| Rohan Desai  | 21AIML103  | 21aiml103@student.edunet.in        | student123  |
 
 ---
 
 ## Testing Checklist
 
-- Staff can create subjects and assignments  
-- Assignments become active when Start Lab is clicked  
-- Students can discover active labs on LAN  
-- Invalid file formats are rejected  
-- Submissions are blocked after the deadline  
-- Staff can view and export submissions  
+- [ ] Teacher can log in and view their subjects
+- [ ] Teacher can create a new subject with a unique code
+- [ ] New student can sign up and log in
+- [ ] Student can join a subject using the class code
+- [ ] Student cannot join the same subject twice
+- [ ] Student dashboard shows all enrolled subjects with teacher names
+- [ ] Invalid subject codes are rejected with the correct error message
 
 ---
 
-## Use Cases
+## Security Notes
 
-- College practical laboratories  
-- Internal assessments  
-- Offline computer labs  
-- Low-resource educational institutions  
-- Rural or limited-connectivity environments  
+- Passwords are currently stored in **plain text** — this should be hashed (e.g., bcrypt) before production deployment
+- CORS is currently open to all origins (`*`) — restrict to your frontend origin in production
+- MongoDB credentials are hardcoded — move to environment variables (`.env`) before deploying
 
 ---
 
 ## Future Enhancements
 
-- Attendance management  
-- Automatic code evaluation  
-- AI-assisted hints via NeuroMesh  
-- Viva or oral examination mode  
-- Plagiarism detection  
-- Detailed analytics dashboard  
+- Password hashing and secure session management (JWT)
+- Assignment creation and submission workflow
+- Attendance tracking
+- AI-assisted feedback via NeuroMesh integration
+- Detailed analytics dashboard for teachers
+- Plagiarism detection for code submissions
 
 ---
 
 ## Contributors
 
-Aman Shaikh  
-Wasim Pathan  
+Aman Shaikh
+Wasim Pathan
 Omkar Gondkar
 Atharva Mashale
