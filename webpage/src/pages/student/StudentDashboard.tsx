@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, LogOut, Wifi, Clock, RefreshCw, BookOpen } from "lucide-react";
+import { GraduationCap, LogOut, Wifi, Clock, RefreshCw, BookOpen, Bot } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { getActiveAssignments, type ActiveAssignment } from "@/lib/api";
 
@@ -84,6 +84,10 @@ const StudentDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate("/chat")}>
+              <Bot className="w-4 h-4" />
+              Assistant
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={doFetch}>
               <RefreshCw className="w-4 h-4" />
             </Button>

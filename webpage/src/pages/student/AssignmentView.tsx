@@ -258,8 +258,8 @@ const AssignmentView = () => {
               onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }} />
             <div
               className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer ${dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-foreground/30 hover:bg-secondary/30"
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-foreground/30 hover:bg-secondary/30"
                 }`}
               onClick={() => !uploading && fileRef.current?.click()}
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}

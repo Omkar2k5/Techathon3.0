@@ -5,6 +5,7 @@ pub mod assignment_manager;
 pub mod submission_manager;
 pub mod file_transfer;
 pub mod scheduler;
+pub mod chat_handler;
 
 use actix_web::web;
 
@@ -23,5 +24,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(submission_manager::get_submissions)
         .service(submission_manager::export_submissions_csv)
         .service(submission_manager::get_submission_status)
-        .service(file_transfer::upload_file);
+        .service(file_transfer::upload_file)
+        .service(chat_handler::lab_chat);
 }

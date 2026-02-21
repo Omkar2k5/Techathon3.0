@@ -1,0 +1,114 @@
+# EduNet LLM Chatbot Integration
+
+## Goal
+Extend EduNet with a context-aware academic chatbot that enforces academic integrity policies at the backend level, is backed by the existing Ollama LLM infrastructure, and integrates seamlessly into both the Teacher and Student React portals.
+
+## Proposed Changes
+
+---
+
+### Backend — New `lab_module/chat_handler.rs`
+
+Instead of a new top-level module, the chatbot API lives inside `lab_module` so it has direct access to the existing DB connection and assignment data.
+
+#### [MODIFY] [mod.rs](file:///e:/Hackathon/AISSMS/src/lab_module/mod.rs)
+- Register the new `chat_handler` submodule and its endpoint.
+
+#### [NEW] [chat_handler.rs](file:///e:/Hackathon/AISSMS/src/lab_module/chat_handler.rs)
+Single file containing:
+
+**`policy_engine`** — pure function
+```
+fn decide_mode(role: &str, assignment_active: bool) -> ChatMode
+  → GlobalMode | LabActiveMode | PostLabMode | TeacherMode
+```
+
+**`prompt_builder`** — pure function
+```
+fn build_system_prompt(mode, subject, assignment_name) -> String
+```
+Dynamically generates the LLM system prompt with rules injected.
+
+**`POST /lab/chat`** endpoint
+- Request: `{ message, user_id, user_role, assignment_id? }`
+- Looks up assignment from DB to get live `is_active` state
+- Calls `decide_mode` → `build_system_prompt`
+- Forwards to Ollama via existing [llm](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#79-98) module's [try_local_llm](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#79-98) / [try_remote_llm](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#99-164)
+- Writes an audit log entry to `audit_logs` collection
+- Returns: `{ reply, mode, subject_name }`
+
+---
+
+### Backend — Modify [llm/mod.rs](file:///e:/Hackathon/AISSMS/src/llm/mod.rs)
+
+#### [MODIFY] [mod.rs](file:///e:/Hackathon/AISSMS/src/llm/mod.rs)
+- Extract [try_local_llm](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#79-98), [try_remote_llm](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#99-164), [OllamaRequest](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#36-40), [OllamaMessage](file:///e:/Hackathon/AISSMS/src/llm/mod.rs#30-34) structs into `pub` so `chat_handler.rs` can reuse them without duplicating the Ollama client code.
+
+---
+
+### Frontend — New `ChatPanel` Component
+
+#### [NEW] [ChatPanel.tsx](file:///e:/Hackathon/AISSMS/webpage/src/components/ChatPanel.tsx)
+- Floating side-panel (slide-in from right, toggle button)
+- Calls `POST /api/lab/chat` with `{ message, user_id, user_role, assignment_id? }`
+- Displays mode banner: `"Lab Active – Limited Assistance Mode"` or `"Full Assistance Mode"`
+- Shows LLM fallback message if unavailable
+
+#### [MODIFY] [StaffDashboard.tsx](file:///e:/Hackathon/AISSMS/webpage/src/pages/staff/StaffDashboard.tsx)
+- Add `<ChatPanel role="teacher" />` (no assignment context → Teacher Mode)
+
+#### [MODIFY] [SubjectDetail.tsx](file:///e:/Hackathon/AISSMS/webpage/src/pages/staff/SubjectDetail.tsx)
+- Add `<ChatPanel role="teacher" assignmentId={activeAssignment?.id} />`
+
+#### [MODIFY] [StudentDashboard.tsx](file:///e:/Hackathon/AISSMS/webpage/src/pages/student/StudentDashboard.tsx)
+- Add `<ChatPanel role="student" />` (no assignment → Global Mode)
+
+#### [MODIFY] [AssignmentView.tsx](file:///e:/Hackathon/AISSMS/webpage/src/pages/student/AssignmentView.tsx)
+- Add `<ChatPanel role="student" assignmentId={assignment.id} />` (Lab Active Mode when assignment is live)
+
+#### [MODIFY] [api.ts](file:///e:/Hackathon/AISSMS/webpage/src/lib/api.ts)
+- Add `sendChatMessage(payload)` function
+
+---
+
+### Database
+
+#### `audit_logs` collection (auto-created on first write)
+```json
+{
+  "actor_id": ObjectId,
+  "actor_role": "student",
+  "action": "CHAT_QUERY",
+  "assignment_id": ObjectId | null,
+  "lab_active": bool,
+  "mode": "LAB_ACTIVE",
+  "timestamp": ISODate
+}
+```
+
+---
+
+## Chat Modes Summary
+
+| Mode | Trigger | Student Restriction |
+|------|---------|---------------------|
+| `TeacherMode` | `role == "teacher"` | None |
+| `GlobalMode` | Student, no assignment | None |
+| `LabActiveMode` | Student, `is_active == true` | No full solutions / code |
+| `PostLabMode` | Student, `is_active == false` | None |
+
+---
+
+## Verification Plan
+
+### Automated
+- `cargo run` builds and starts server
+- Test `POST /api/lab/chat` with:
+  - Teacher role → unrestricted reply
+  - Student + active assignment → restricted reply with refusal for full code
+  - Student + inactive assignment → full reply
+
+### Manual
+- Chat panel appears on all 4 pages
+- Banner changes state dynamically when lab starts/ends
+- Audit log documents appear in Atlas `techathon.audit_logs`

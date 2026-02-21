@@ -20,45 +20,39 @@ use conversation::CONVERSATION_STORE;
 #[folder = "./webpage/build/"]
 struct WebAssets;
 
-fn send_file_or_default(path: String) -> HttpResponse {
-    let path = if path.starts_with("assets/") {
-        path
-    } else {
-        path.trim_start_matches("/app/").to_string()
-    };
-    
-    let asset = WebAssets::get(path.as_str());
-    match asset {
-        Some(file) => {
-            let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
-            HttpResponse::Ok()
-                .content_type(mime_type.to_string())
-                .body(file.data)
-        }
-        None => {
-            let index_asset = WebAssets::get("index.html");
-            match index_asset {
-                Some(index_file) => {
-                    let mime_type = mime_guess::from_path("index.html").first_or_octet_stream();
-                    HttpResponse::Ok()
-                        .content_type(mime_type.to_string())
-                        .body(index_file.data)
-                }
-                None => HttpResponse::NotFound().body("Not Found"),
-            }
-        }
+/// Serve a file from the embedded build, falling back to index.html for SPA routing
+fn send_asset(path: &str) -> HttpResponse {
+    // Try the exact path first
+    if let Some(file) = WebAssets::get(path) {
+        let mime = mime_guess::from_path(path).first_or_octet_stream();
+        return HttpResponse::Ok()
+            .content_type(mime.to_string())
+            .body(file.data);
     }
+    // SPA fallback: serve index.html for all unknown paths (React Router handles it)
+    if let Some(index) = WebAssets::get("index.html") {
+        return HttpResponse::Ok()
+            .content_type("text/html")
+            .body(index.data);
+    }
+    HttpResponse::NotFound().body("Not found")
 }
 
-#[get("/app/")]
-async fn get_index() -> impl Responder {
-    send_file_or_default("index.html".to_string())
+#[get("/")]
+async fn serve_root() -> impl Responder {
+    send_asset("index.html")
 }
 
-#[get("/app/{path:.*}")]
-async fn get_root_files(path: actix_web::web::Path<String>) -> impl Responder {
-    let path = path.into_inner();
-    send_file_or_default(path)
+/// Serve static assets (JS, CSS, images) from /assets/
+#[get("/assets/{file:.*}")]
+async fn serve_assets(file: web::Path<String>) -> impl Responder {
+    send_asset(&format!("assets/{}", file.into_inner()))
+}
+
+/// SPA catch-all: any path that isn't /api/* or /assets/* gets index.html
+#[get("/{path:.*}")]
+async fn serve_spa(_path: web::Path<String>) -> impl Responder {
+    send_asset("index.html")
 }
 
 #[get("/peers")]
@@ -90,46 +84,42 @@ async fn main() -> std::io::Result<()> {
     let received_ips = Arc::new(Mutex::new(HashSet::new()));
     let received_ips_clone = received_ips.clone();
 
-    // Start UDP broadcast receiver
     tokio::spawn(async move {
         if let Err(e) = receive_broadcast(received_ips_clone).await {
             eprintln!("Error in UDP receiver task: {}", e);
         }
     });
-    
-    // Start TCP listener
     tokio::spawn(listen_for_connections());
-
-    // Start UDP broadcaster
     tokio::spawn(periodic_broadcast());
-
-    // Start peer connector
     let received_ips_clone = received_ips.clone();
     tokio::spawn(connect_to_peers(received_ips_clone));
-
-    // Start lab deadline scheduler
     tokio::spawn(lab_module::scheduler::run_scheduler());
 
-    // Open web browser
-    let _ = open::that("http://localhost:5173");
-    
-    // Start HTTP server
+    // Auto-open the browser at the app root
+    let _ = open::that("http://localhost:8080");
+
     HttpServer::new(|| {
         App::new()
-        .wrap(
-            Cors::default()
-                .allow_any_origin()
-                .allow_any_method()
-                .allow_any_header()
-                .expose_headers(["content-type", "content-length"])
-                .max_age(3600)
-        )
-            .service(web::scope("/api")
-                .service(llm::chat)
-                .configure(lab_module::config))
+            .wrap(
+                Cors::default()
+                    .allow_any_origin()
+                    .allow_any_method()
+                    .allow_any_header()
+                    .expose_headers(["content-type", "content-length"])
+                    .max_age(3600),
+            )
+            // API routes (must come first)
+            .service(
+                web::scope("/api")
+                    .service(llm::chat)
+                    .configure(lab_module::config),
+            )
             .service(get_peers)
-            .service(get_index)
-            .service(get_root_files)
+            // Static assets
+            .service(serve_assets)
+            // SPA root + catch-all (must come last)
+            .service(serve_root)
+            .service(serve_spa)
     })
     .bind(("0.0.0.0", 8080))?
     .run()

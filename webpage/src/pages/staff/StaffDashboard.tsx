@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Users, LogOut, Plus, Loader2 } from "lucide-react";
+import { BookOpen, Users, LogOut, Plus, Loader2, Bot } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { getTeacherSubjects, createSubject, type Subject } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +67,10 @@ const StaffDashboard = () => {
               <p className="text-xs text-muted-foreground">Staff Portal · {user?.name}</p>
             </div>
           </div>
+          <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate("/chat")}>
+            <Bot className="w-4 h-4" />
+            Assistant
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" />
             Sign Out

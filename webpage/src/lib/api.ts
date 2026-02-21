@@ -134,3 +134,33 @@ export async function getSubmissionStatus(assignmentId: string, studentId: strin
     const res = await fetch(`${BASE}/api/submissions/status?assignment_id=${assignmentId}&student_id=${studentId}`);
     return res.ok ? res.json() : null;
 }
+
+// ── Chat ──────────────────────────────────────────────────
+export interface ChatMessage {
+    role: "user" | "assistant";
+    content: string;
+}
+
+export interface ChatPayload {
+    message: string;
+    user_id: string;
+    user_role: string;
+    assignment_id?: string;
+}
+
+export interface ChatReply {
+    reply: string;
+    mode: string;
+    subject_name: string;
+}
+
+export async function sendChatMessage(payload: ChatPayload): Promise<ChatReply> {
+    const res = await fetch(`${BASE}/api/lab/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("Chat request failed");
+    return res.json();
+}
+

@@ -26,16 +26,16 @@ pub struct ChatRequest {
     sender: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct OllamaMessage {
-    role: String,
-    content: String,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OllamaMessage {
+    pub role: String,
+    pub content: String,
 }
 
-#[derive(Serialize, Deserialize)]
-struct OllamaRequest {
-    model: String,
-    messages: Vec<OllamaMessage>,
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OllamaRequest {
+    pub model: String,
+    pub messages: Vec<OllamaMessage>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -76,27 +76,31 @@ async fn is_local_ollama_available() -> bool {
     }
 }
 
-async fn try_local_llm(req: &OllamaRequest) -> Result<String, String> {
-    let client = Client::new();
-    let url = get_ollama_url().await;
+pub async fn try_local_llm(req: &OllamaRequest) -> Result<String, String> {
+    // Always connect to local Ollama directly — never use LAN peer URL here
+    let client = Client::builder()
+        .timeout(Duration::from_secs(120))
+        .build()
+        .map_err(|e| format!("HTTP client error: {}", e))?;
+
     let response = client
-        .post(format!("{}/api/chat", url))
+        .post("http://127.0.0.1:11434/api/chat")
         .json(&req)
         .send()
         .await
-        .map_err(|e| format!("Failed to connect to local LLM: {}", e))?;
+        .map_err(|e| format!("Failed to connect to local Ollama: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("Local LLM error: {}", response.status()));
+        return Err(format!("Local Ollama error: {}", response.status()));
     }
 
     let body = response.text().await
-        .map_err(|e| format!("Failed to get local LLM response: {}", e))?;
+        .map_err(|e| format!("Failed to read Ollama response: {}", e))?;
 
     process_ollama_response(&body)
 }
 
-async fn try_remote_llm(req: &OllamaRequest) -> Result<String, String> {
+pub async fn try_remote_llm(req: &OllamaRequest) -> Result<String, String> {
     let connections = LLM_CONNECTIONS.lock().await;
     
     if connections.is_empty() {
