@@ -154,7 +154,7 @@ const StudentDashboard = () => {
               My Subjects
             </button>
           </div>
-          <Button size="sm" variant="outline" className="gap-2" onClick={() => setJoinOpen(true)}>
+          <Button size="sm" className="gap-2 bg-black text-white hover:bg-black/80" onClick={() => setJoinOpen(true)}>
             <PlusCircle className="w-4 h-4" />Join Subject
           </Button>
         </div>
@@ -208,7 +208,6 @@ const StudentDashboard = () => {
                     )}
                     <div className="mt-4"><Countdown deadline={assignment.deadline} /></div>
                     <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{assignment.time_limit_minutes} min</span>
                       <span className="font-mono">{assignment.allowed_file_types.join(", ")}</span>
                     </div>
                     <p className="text-xs mt-3 font-medium text-primary">Tap to open & submit →</p>
@@ -227,18 +226,20 @@ const StudentDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {subjects.map((s) => (
-                <Card key={s.id} className="border-border">
+                <Card key={s.id} className="border-border cursor-pointer hover:ring-1 hover:ring-foreground/20 hover:shadow-sm transition-all" onClick={() => navigate(`/student/subject/${s.id}`)}>
                   <CardContent className="p-6">
                     <span className="font-mono text-xs px-2 py-1 bg-secondary rounded">{s.subject_code}</span>
                     <h3 className="font-semibold mt-3">{s.subject_name}</h3>
                     {(s as any).teacher_name && (
                       <p className="text-xs text-muted-foreground mt-1">Teacher: {(s as any).teacher_name}</p>
                     )}
+                    <p className="text-xs text-primary font-medium mt-3">Tap to view your submissions →</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
           )
+
         )}
       </main>
     </div>

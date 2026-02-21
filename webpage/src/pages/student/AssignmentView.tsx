@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   ArrowLeft, Upload, Download, CheckCircle, Clock,
-  AlertCircle, Loader2, FileCode, GraduationCap, User, Timer
+  AlertCircle, Loader2, FileCode, User, Timer
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -179,8 +179,8 @@ const AssignmentView = () => {
             </div>
             <p className="text-xs text-muted-foreground">{assignment.assignment_name}</p>
           </div>
-          <Badge className="bg-primary text-primary-foreground gap-1 text-xs shrink-0">
-            <span className="w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse" />LIVE
+          <Badge className="flex items-center gap-1.5 bg-red-500 text-white text-xs px-3 py-1 shrink-0">
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse" />LIVE
           </Badge>
         </div>
       </header>
@@ -208,12 +208,9 @@ const AssignmentView = () => {
               </div>
             )}
 
-            {/* Dual timer */}
+            {/* Deadline only */}
             <div className="space-y-4 p-4 bg-secondary/30 rounded-xl">
-              <PersonalTimer limitMinutes={assignment.time_limit_minutes} />
-              <div className="border-t border-border pt-3">
-                <DeadlineTimer deadline={assignment.deadline} />
-              </div>
+              <DeadlineTimer deadline={assignment.deadline} />
             </div>
 
             {/* Meta */}
@@ -232,85 +229,80 @@ const AssignmentView = () => {
           </CardContent>
         </Card>
 
-        {/* Submission status */}
-        {submitted && (
+        {/* Submission section */}
+        {submitted ? (
           <Card className="border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
             <CardContent className="p-5 flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-green-800 dark:text-green-300">Submitted successfully</p>
+                <p className="text-sm font-semibold text-green-800 dark:text-green-300">Lab submitted successfully</p>
                 <p className="text-xs text-green-700 dark:text-green-400 font-mono mt-0.5">{submitted.file_name}</p>
-                <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
-                  {new Date(submitted.submitted_at).toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">You can resubmit to replace with a newer version.</p>
+                <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">{new Date(submitted.submitted_at).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-2">Your submission is locked. Contact your teacher if you need to resubmit.</p>
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Upload area */}
-        <Card className="border-border">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <Upload className="w-4 h-4" />{submitted ? "Resubmit Solution" : "Submit Your Solution"}
-            </h3>
-
-            {/* Step 1: File selector drop zone */}
-            {!selectedFile ? (
-              <div
-                className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer
-                  ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
-                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={e => {
-                  e.preventDefault(); setDragOver(false);
-                  const f = e.dataTransfer.files[0];
-                  if (f) handleFileSelect(f);
-                }}
-                onClick={() => fileRef.current?.click()}
-              >
-                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm font-medium">Drop file here or click to browse</p>
-                <p className="text-xs text-muted-foreground mt-1">Allowed: {assignment.allowed_file_types.join(", ")}</p>
-                <input ref={fileRef} type="file" className="hidden"
-                  accept={assignment.allowed_file_types.join(",")}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
-              </div>
-            ) : (
-              /* Step 2: File preview + Submit button */
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl border border-border">
-                  <FileCode className="w-8 h-8 text-primary shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB · Ready to submit</p>
-                  </div>
-                  <button
-                    className="text-xs text-muted-foreground hover:text-foreground underline shrink-0"
-                    onClick={() => { setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
-                  >
-                    Change
-                  </button>
-                </div>
-                <Button
-                  className="w-full gap-2 h-11 text-base"
-                  onClick={() => handleUpload(selectedFile)}
-                  disabled={uploading}
+        ) : (
+          /* Upload area */
+          <Card className="border-border">
+            <CardContent className="p-6">
+              <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+                <Upload className="w-4 h-4" />Submit Your Solution
+              </h3>
+              {!selectedFile ? (
+                <div
+                  className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer
+                    ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => {
+                    e.preventDefault(); setDragOver(false);
+                    const f = e.dataTransfer.files[0];
+                    if (f) handleFileSelect(f);
+                  }}
+                  onClick={() => fileRef.current?.click()}
                 >
-                  {uploading ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" />Uploading...</>
-                  ) : (
-                    <><CheckCircle className="w-5 h-5" />Submit Lab</>
-                  )}
-                </Button>
-                <input ref={fileRef} type="file" className="hidden"
-                  accept={assignment.allowed_file_types.join(",")}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm font-medium">Drop file here or click to browse</p>
+                  <p className="text-xs text-muted-foreground mt-1">Allowed: {assignment.allowed_file_types.join(", ")}</p>
+                  <input ref={fileRef} type="file" className="hidden"
+                    accept={assignment.allowed_file_types.join(",")}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl border border-border">
+                    <FileCode className="w-8 h-8 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{selectedFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB · Ready to submit</p>
+                    </div>
+                    <button
+                      className="text-xs text-muted-foreground hover:text-foreground underline shrink-0"
+                      onClick={() => { setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <Button
+                    className="w-full gap-2 h-11 text-base"
+                    onClick={() => handleUpload(selectedFile)}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <><Loader2 className="w-5 h-5 animate-spin" />Uploading...</>
+                    ) : (
+                      <><CheckCircle className="w-5 h-5" />Submit Lab</>
+                    )}
+                  </Button>
+                  <input ref={fileRef} type="file" className="hidden"
+                    accept={assignment.allowed_file_types.join(",")}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

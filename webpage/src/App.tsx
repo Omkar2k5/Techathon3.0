@@ -9,6 +9,7 @@ import StaffDashboard from "./pages/staff/StaffDashboard";
 import SubjectDetail from "./pages/staff/SubjectDetail";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import AssignmentView from "./pages/student/AssignmentView";
+import StudentSubjectHistory from "./pages/student/StudentSubjectHistory";
 import ChatPage from "./pages/ChatPage";
 import NotFound from "./pages/NotFound";
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/staff/subject/:id" element={<StaffGuard><SubjectDetail /></StaffGuard>} />
             <Route path="/student/dashboard" element={<StudentGuard><StudentDashboard /></StudentGuard>} />
             <Route path="/student/assignment/:id" element={<StudentGuard><AssignmentView /></StudentGuard>} />
+            <Route path="/student/subject/:id" element={<StudentGuard><StudentSubjectHistory /></StudentGuard>} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

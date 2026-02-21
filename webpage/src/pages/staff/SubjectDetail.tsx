@@ -256,40 +256,24 @@ const SubjectDetail = () => {
                       onChange={e => setForm(f => ({ ...f, sampleFile: e.target.files?.[0] ?? null }))} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Allowed Types</Label>
-                    <Select value={form.allowedTypes} onValueChange={v => setForm(f => ({ ...f, allowedTypes: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value=".cpp">.cpp</SelectItem>
-                        <SelectItem value=".py">.py</SelectItem>
-                        <SelectItem value=".java">.java</SelectItem>
-                        <SelectItem value=".c">.c</SelectItem>
-                        <SelectItem value=".cpp,.py">.cpp & .py</SelectItem>
-                        <SelectItem value=".cpp,.py,.java,.c">All common</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Time Limit (personal)</Label>
-                    <Select value={form.timeLimit} onValueChange={v => setForm(f => ({ ...f, timeLimit: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">30 min</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="90">90 min</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
-                        <SelectItem value="180">3 hours</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Allowed Types</Label>
+                  <Select value={form.allowedTypes} onValueChange={v => setForm(f => ({ ...f, allowedTypes: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value=".cpp">.cpp</SelectItem>
+                      <SelectItem value=".py">.py</SelectItem>
+                      <SelectItem value=".java">.java</SelectItem>
+                      <SelectItem value=".c">.c</SelectItem>
+                      <SelectItem value=".cpp,.py">.cpp &amp; .py</SelectItem>
+                      <SelectItem value=".cpp,.py,.java,.c">All common</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Hard Deadline *</Label>
                   <Input type="datetime-local" value={form.deadline}
                     onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
-                  <p className="text-xs text-muted-foreground">Time limit = personal countdown; Deadline = when server closes submissions</p>
                 </div>
                 <Button className="w-full gap-2" type="submit" disabled={creating}>
                   {creating ? <><Loader2 className="w-4 h-4 animate-spin" />Creating...</> : <><Plus className="w-4 h-4" />Create Assignment</>}
@@ -379,17 +363,10 @@ const SubjectDetail = () => {
                             <Input value={editForm.assignment_name}
                               onChange={e => setEditForm(f => ({ ...f, assignment_name: e.target.value }))}
                               className="font-semibold" />
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Time Limit (min)</Label>
-                                <Input type="number" value={editForm.time_limit_minutes}
-                                  onChange={e => setEditForm(f => ({ ...f, time_limit_minutes: e.target.value }))} />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Hard Deadline</Label>
-                                <Input type="datetime-local" value={editForm.deadline}
-                                  onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))} />
-                              </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Hard Deadline</Label>
+                              <Input type="datetime-local" value={editForm.deadline}
+                                onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))} />
                             </div>
                             <div className="flex gap-2">
                               <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
@@ -403,15 +380,14 @@ const SubjectDetail = () => {
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-semibold text-foreground">{assignment.assignment_name}</h3>
                               {assignment.is_active ? (
-                                <Badge className="bg-primary text-primary-foreground gap-1 text-xs">
-                                  <span className="w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse" />LIVE
+                                <Badge className="flex items-center gap-1.5 bg-red-500 text-white text-xs px-2.5 py-0.5">
+                                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />LIVE
                                 </Badge>
                               ) : (
                                 <Badge variant="secondary" className="text-xs">Inactive</Badge>
                               )}
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />Time limit: {assignment.time_limit_minutes} min</span>
                               <span className="flex items-center gap-1"><FileCode className="w-3.5 h-3.5" />{assignment.allowed_file_types.join(", ")}</span>
                               <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{subs.length} submitted</span>
                               <span>Deadline: {new Date(assignment.deadline).toLocaleString()}</span>
