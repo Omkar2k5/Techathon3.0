@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth";
 import {
   getSubjectAssignments, createAssignment, startAssignment, editAssignment,
   closeAssignment, getSubmissions, exportCsvUrl, getTeacherSubjects,
-  getSubjectStudents, enrollStudent, removeStudent,
+  getSubjectStudents, enrollStudent, removeStudent, submissionDownloadUrl,
   type Assignment, type Submission, type Subject, type EnrolledStudent
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -492,6 +492,14 @@ const SubjectDetail = () => {
                                   <Timer className="w-3 h-3" />
                                   {new Date(sub.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                 </span>
+                                <a
+                                  href={submissionDownloadUrl(sub.id)}
+                                  download
+                                  className="ml-1 p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                  title={`Download ${sub.file_path.split("/").pop()}`}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </a>
                               </div>
                             </div>
                           ))}

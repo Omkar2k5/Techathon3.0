@@ -3,6 +3,7 @@ use mongodb::bson::{doc, oid::ObjectId};
 use futures::TryStreamExt;
 use crate::lab_module::mongo_connection::get_db;
 
+
 #[get("/assignments/{id}/submissions")]
 pub async fn get_submissions(path: web::Path<String>) -> HttpResponse {
     let db = get_db();
@@ -85,3 +86,29 @@ pub async fn get_submission_status(query: web::Query<std::collections::HashMap<S
         _ => HttpResponse::NotFound().finish(),
     }
 }
+
+// GET /submissions/{id}/download — serve the submitted file to staff
+#[get("/submissions/{id}/download")]
+pub async fn download_submission(path: web::Path<String>) -> HttpResponse {
+    let db = get_db();
+    let col = db.collection::<mongodb::bson::Document>("submissions");
+    let id = match ObjectId::parse_str(path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+    if let Ok(Some(doc)) = col.find_one(doc! { "_id": id }, None).await {
+        if let Ok(path_str) = doc.get_str("file_path") {
+            if let Ok(data) = std::fs::read(path_str) {
+                let fname = std::path::Path::new(path_str)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("submission");
+                return HttpResponse::Ok()
+                    .append_header(("Content-Disposition", format!("attachment; filename=\"{}\"", fname)))
+                    .body(data);
+            }
+        }
+    }
+    HttpResponse::NotFound().json(serde_json::json!({ "error": "File not found" }))
+}
+

@@ -33,6 +33,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(submission_manager::get_submissions)
         .service(submission_manager::export_submissions_csv)
         .service(submission_manager::get_submission_status)
+        .service(submission_manager::download_submission)
         // file upload
         .service(file_transfer::upload_file)
         // chat

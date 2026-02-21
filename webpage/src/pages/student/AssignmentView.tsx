@@ -103,6 +103,7 @@ const AssignmentView = () => {
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState<{ file_name: string; submitted_at: string } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -120,23 +121,30 @@ const AssignmentView = () => {
     load();
   }, [user, id]);
 
-  const handleUpload = async (file: File) => {
-    if (!assignment || !user) return;
+  const handleFileSelect = (file: File) => {
+    if (!assignment) return;
     const ext = "." + file.name.split(".").pop()?.toLowerCase();
     if (!assignment.allowed_file_types.includes(ext)) {
       toast({ title: "Invalid file type", description: `Allowed: ${assignment.allowed_file_types.join(", ")}`, variant: "destructive" });
       return;
     }
+    setSelectedFile(file);
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!assignment || !user) return;
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("assignment_id", assignment.id);
+      fd.append("subject_id", assignment.subject_id);
       fd.append("student_id", user.id);
       fd.append("roll_no", user.roll_no ?? user.id);
       await uploadFile(fd);
       const status = await getSubmissionStatus(assignment.id, user.id);
       if (status) setSubmitted({ file_name: status.file_name, submitted_at: status.submitted_at });
+      setSelectedFile(null);
       toast({ title: "Submitted!", description: `${file.name} uploaded successfully.` });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -247,31 +255,60 @@ const AssignmentView = () => {
             <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
               <Upload className="w-4 h-4" />{submitted ? "Resubmit Solution" : "Submit Your Solution"}
             </h3>
-            <div
-              className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer
-                ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
-              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={e => {
-                e.preventDefault(); setDragOver(false);
-                const f = e.dataTransfer.files[0];
-                if (f) handleUpload(f);
-              }}
-              onClick={() => fileRef.current?.click()}
-            >
-              {uploading ? (
-                <><Loader2 className="w-8 h-8 mx-auto text-primary animate-spin mb-2" /><p className="text-sm">Uploading...</p></>
-              ) : (
-                <>
-                  <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm font-medium">Drop file here or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-1">Allowed: {assignment.allowed_file_types.join(", ")}</p>
-                </>
-              )}
-              <input ref={fileRef} type="file" className="hidden"
-                accept={assignment.allowed_file_types.join(",")}
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
-            </div>
+
+            {/* Step 1: File selector drop zone */}
+            {!selectedFile ? (
+              <div
+                className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer
+                  ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => {
+                  e.preventDefault(); setDragOver(false);
+                  const f = e.dataTransfer.files[0];
+                  if (f) handleFileSelect(f);
+                }}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">Drop file here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">Allowed: {assignment.allowed_file_types.join(", ")}</p>
+                <input ref={fileRef} type="file" className="hidden"
+                  accept={assignment.allowed_file_types.join(",")}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+              </div>
+            ) : (
+              /* Step 2: File preview + Submit button */
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl border border-border">
+                  <FileCode className="w-8 h-8 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB · Ready to submit</p>
+                  </div>
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground underline shrink-0"
+                    onClick={() => { setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                  >
+                    Change
+                  </button>
+                </div>
+                <Button
+                  className="w-full gap-2 h-11 text-base"
+                  onClick={() => handleUpload(selectedFile)}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" />Uploading...</>
+                  ) : (
+                    <><CheckCircle className="w-5 h-5" />Submit Lab</>
+                  )}
+                </Button>
+                <input ref={fileRef} type="file" className="hidden"
+                  accept={assignment.allowed_file_types.join(",")}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

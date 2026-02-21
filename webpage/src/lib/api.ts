@@ -137,6 +137,11 @@ export function sampleFileUrl(assignmentId: string): string {
     return `${BASE}/api/assignments/${assignmentId}/sample`;
 }
 
+export function submissionDownloadUrl(submissionId: string): string {
+    return `${BASE}/api/submissions/${submissionId}/download`;
+}
+
+
 export async function getSubmissionStatus(assignmentId: string, studentId: string) {
     const res = await fetch(`${BASE}/api/submissions/status?assignment_id=${assignmentId}&student_id=${studentId}`);
     return res.ok ? res.json() : null;
