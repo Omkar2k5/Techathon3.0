@@ -1,6 +1,6 @@
-use actix_web::{get, post, web, HttpResponse};
+use actix_web::{get, post, patch, web, HttpResponse};
 use actix_multipart::Multipart;
-use mongodb::bson::{doc, oid::ObjectId, DateTime as BsonDateTime};
+use mongodb::bson::{doc, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 use chrono::Utc;
 use futures::TryStreamExt;
@@ -21,6 +21,15 @@ pub struct AssignmentDoc {
     pub created_at: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct EditAssignmentRequest {
+    pub assignment_name: Option<String>,
+    pub time_limit_minutes: Option<i32>,
+    pub deadline: Option<String>,
+    pub allowed_file_types: Option<Vec<String>>,
+}
+
+// POST /assignments/create
 #[post("/assignments/create")]
 pub async fn create_assignment(mut payload: Multipart) -> HttpResponse {
     let db = get_db();
@@ -41,15 +50,15 @@ pub async fn create_assignment(mut payload: Multipart) -> HttpResponse {
             data.extend_from_slice(&chunk);
         }
         match name.as_str() {
-            "subject_id" => subject_id_str = String::from_utf8_lossy(&data).to_string(),
-            "assignment_name" => assignment_name = String::from_utf8_lossy(&data).to_string(),
+            "subject_id"         => subject_id_str = String::from_utf8_lossy(&data).to_string(),
+            "assignment_name"    => assignment_name = String::from_utf8_lossy(&data).to_string(),
             "allowed_file_types" => {
                 let s = String::from_utf8_lossy(&data).to_string();
                 allowed_file_types = serde_json::from_str::<Vec<String>>(&s).unwrap_or_default();
             }
             "time_limit_minutes" => time_limit = String::from_utf8_lossy(&data).parse().unwrap_or(60),
-            "deadline" => deadline = String::from_utf8_lossy(&data).to_string(),
-            "created_by" => created_by_str = String::from_utf8_lossy(&data).to_string(),
+            "deadline"           => deadline = String::from_utf8_lossy(&data).to_string(),
+            "created_by"         => created_by_str = String::from_utf8_lossy(&data).to_string(),
             "sample_file" => {
                 let cd = field.content_disposition();
                 if let Some(fname) = cd.get_filename() {
@@ -76,7 +85,6 @@ pub async fn create_assignment(mut payload: Multipart) -> HttpResponse {
     };
 
     let types_bson: Vec<_> = allowed_file_types.iter().map(|s| mongodb::bson::Bson::String(s.clone())).collect();
-
     let doc = doc! {
         "subject_id": subject_id,
         "assignment_name": &assignment_name,
@@ -99,6 +107,42 @@ pub async fn create_assignment(mut payload: Multipart) -> HttpResponse {
     }
 }
 
+// PATCH /assignments/{id}  — edit name, time_limit, deadline, file types
+#[patch("/assignments/{id}")]
+pub async fn edit_assignment(path: web::Path<String>, body: web::Json<EditAssignmentRequest>) -> HttpResponse {
+    let db = get_db();
+    let col = db.collection::<mongodb::bson::Document>("assignments");
+    let id = match ObjectId::parse_str(path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::BadRequest().json(serde_json::json!({"error":"Invalid ID"})),
+    };
+
+    let mut set_doc = doc! {};
+    if let Some(name) = &body.assignment_name {
+        set_doc.insert("assignment_name", name);
+    }
+    if let Some(tl) = body.time_limit_minutes {
+        set_doc.insert("time_limit_minutes", tl);
+    }
+    if let Some(dl) = &body.deadline {
+        set_doc.insert("deadline", dl);
+    }
+    if let Some(types) = &body.allowed_file_types {
+        let types_bson: Vec<_> = types.iter().map(|s| mongodb::bson::Bson::String(s.clone())).collect();
+        set_doc.insert("allowed_file_types", mongodb::bson::Bson::Array(types_bson));
+    }
+
+    if set_doc.is_empty() {
+        return HttpResponse::BadRequest().json(serde_json::json!({"error":"Nothing to update"}));
+    }
+
+    match col.update_one(doc! { "_id": id }, doc! { "$set": set_doc }, None).await {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({"status":"updated"})),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({"error": e.to_string()})),
+    }
+}
+
+// POST /assignments/start/{id}
 #[post("/assignments/start/{id}")]
 pub async fn start_assignment(path: web::Path<String>) -> HttpResponse {
     let db = get_db();
@@ -108,10 +152,14 @@ pub async fn start_assignment(path: web::Path<String>) -> HttpResponse {
         Err(_) => return HttpResponse::BadRequest().json(serde_json::json!({"error":"Invalid ID"})),
     };
     let update = doc! { "$set": { "is_active": true, "start_time": Utc::now().to_rfc3339() } };
-    let _ = col.update_one(doc! { "_id": id }, update, None).await;
-    HttpResponse::Ok().json(serde_json::json!({ "status": "started" }))
+    match col.update_one(doc! { "_id": id }, update, None).await {
+        Ok(r) if r.matched_count == 0 => HttpResponse::NotFound().json(serde_json::json!({"error":"Assignment not found"})),
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "status": "started" })),
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({"error": e.to_string()})),
+    }
 }
 
+// POST /assignments/close/{id}
 #[post("/assignments/close/{id}")]
 pub async fn close_assignment(path: web::Path<String>) -> HttpResponse {
     let db = get_db();
@@ -125,13 +173,47 @@ pub async fn close_assignment(path: web::Path<String>) -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "status": "closed" }))
 }
 
+// GET /assignments/active  — works for both student_id and teacher_id query params
 #[get("/assignments/active")]
 pub async fn get_active_assignments(query: web::Query<std::collections::HashMap<String, String>>) -> HttpResponse {
     let db = get_db();
     let col = db.collection::<mongodb::bson::Document>("assignments");
     let subjects_col = db.collection::<mongodb::bson::Document>("subjects");
     let enrollments_col = db.collection::<mongodb::bson::Document>("subject_enrollments");
+    let users_col = db.collection::<mongodb::bson::Document>("users");
 
+    // ── Teacher mode: return active assignments for teacher's subjects ──
+    if let Some(teacher_id_str) = query.get("teacher_id") {
+        let teacher_id = match ObjectId::parse_str(teacher_id_str) {
+            Ok(id) => id,
+            Err(_) => return HttpResponse::BadRequest().json(serde_json::json!({"error":"Invalid teacher_id"})),
+        };
+        // Get teacher's subjects
+        let mut subject_ids: Vec<ObjectId> = vec![];
+        if let Ok(mut cur) = subjects_col.find(doc! { "teacher_id": teacher_id, "is_active": true }, None).await {
+            while let Ok(Some(doc)) = cur.try_next().await {
+                if let Ok(sid) = doc.get_object_id("_id") {
+                    subject_ids.push(sid);
+                }
+            }
+        }
+        let sid_bson: Vec<_> = subject_ids.iter().map(|id| mongodb::bson::Bson::ObjectId(*id)).collect();
+        let filter = doc! { "is_active": true, "subject_id": { "$in": sid_bson } };
+        let mut results = vec![];
+        if let Ok(mut cur) = col.find(filter, None).await {
+            while let Ok(Some(doc)) = cur.try_next().await {
+                results.push(serde_json::json!({
+                    "id": doc.get_object_id("_id").map(|id| id.to_hex()).unwrap_or_default(),
+                    "subject_id": doc.get_object_id("subject_id").map(|id| id.to_hex()).unwrap_or_default(),
+                    "assignment_name": doc.get_str("assignment_name").unwrap_or(""),
+                    "is_active": true,
+                }));
+            }
+        }
+        return HttpResponse::Ok().json(results);
+    }
+
+    // ── Student mode: return active assignments for enrolled subjects ──
     let student_id_str = query.get("student_id").cloned().unwrap_or_default();
     let student_id = match ObjectId::parse_str(&student_id_str) {
         Ok(id) => id,
@@ -155,20 +237,28 @@ pub async fn get_active_assignments(query: web::Query<std::collections::HashMap<
     if let Ok(mut cur) = col.find(filter, None).await {
         while let Ok(Some(doc)) = cur.try_next().await {
             let id = doc.get_object_id("_id").map(|id| id.to_hex()).unwrap_or_default();
-            let subject_id = doc.get_object_id("subject_id").ok();
+            let subject_id_oid = doc.get_object_id("subject_id").ok();
             let mut subject_name = String::new();
             let mut subject_code = String::new();
-            if let Some(sid) = subject_id {
+            let mut teacher_name = String::new();
+            let mut teacher_id_hex = String::new();
+
+            if let Some(sid) = subject_id_oid {
                 if let Ok(Some(sdoc)) = subjects_col.find_one(doc! { "_id": sid }, None).await {
                     subject_name = sdoc.get_str("subject_name").unwrap_or("").to_string();
                     subject_code = sdoc.get_str("subject_code").unwrap_or("").to_string();
+                    if let Ok(tid) = sdoc.get_object_id("teacher_id") {
+                        teacher_id_hex = tid.to_hex();
+                        if let Ok(Some(udoc)) = users_col.find_one(doc! { "_id": tid }, None).await {
+                            teacher_name = udoc.get_str("name").unwrap_or("").to_string();
+                        }
+                    }
                 }
             }
+
             let types: Vec<String> = doc.get_array("allowed_file_types").map(|arr| {
                 arr.iter().filter_map(|b| b.as_str().map(|s| s.to_string())).collect()
             }).unwrap_or_default();
-
-            let has_sample = doc.get_str("sample_file_path").is_ok();
 
             results.push(serde_json::json!({
                 "id": id,
@@ -179,18 +269,23 @@ pub async fn get_active_assignments(query: web::Query<std::collections::HashMap<
                 "allowed_file_types": types,
                 "time_limit_minutes": doc.get_i32("time_limit_minutes").unwrap_or(60),
                 "deadline": doc.get_str("deadline").unwrap_or(""),
+                "start_time": doc.get_str("start_time").unwrap_or(""),
                 "is_active": true,
-                "has_sample": has_sample,
+                "has_sample": doc.get_str("sample_file_path").is_ok(),
+                "teacher_name": teacher_name,
+                "teacher_id": teacher_id_hex,
             }));
         }
     }
     HttpResponse::Ok().json(results)
 }
 
+// GET /assignments/subject/{subject_id}
 #[get("/assignments/subject/{subject_id}")]
 pub async fn get_subject_assignments(path: web::Path<String>) -> HttpResponse {
     let db = get_db();
     let col = db.collection::<mongodb::bson::Document>("assignments");
+    let users_col = db.collection::<mongodb::bson::Document>("users");
     let subject_id = match ObjectId::parse_str(path.into_inner()) {
         Ok(id) => id,
         Err(_) => return HttpResponse::BadRequest().json(serde_json::json!({"error":"Invalid ID"})),
@@ -203,6 +298,15 @@ pub async fn get_subject_assignments(path: web::Path<String>) -> HttpResponse {
             let types: Vec<String> = doc.get_array("allowed_file_types").map(|arr| {
                 arr.iter().filter_map(|b| b.as_str().map(|s| s.to_string())).collect()
             }).unwrap_or_default();
+
+            // Resolve teacher name
+            let mut teacher_name = String::new();
+            if let Ok(tid) = doc.get_object_id("created_by") {
+                if let Ok(Some(udoc)) = users_col.find_one(doc! { "_id": tid }, None).await {
+                    teacher_name = udoc.get_str("name").unwrap_or("").to_string();
+                }
+            }
+
             results.push(serde_json::json!({
                 "id": id,
                 "assignment_name": doc.get_str("assignment_name").unwrap_or(""),
@@ -210,13 +314,18 @@ pub async fn get_subject_assignments(path: web::Path<String>) -> HttpResponse {
                 "time_limit_minutes": doc.get_i32("time_limit_minutes").unwrap_or(60),
                 "deadline": doc.get_str("deadline").unwrap_or(""),
                 "is_active": doc.get_bool("is_active").unwrap_or(false),
+                "start_time": doc.get_str("start_time").unwrap_or(""),
+                "has_sample": doc.get_str("sample_file_path").is_ok(),
                 "created_at": doc.get_str("created_at").unwrap_or(""),
+                "created_by": doc.get_object_id("created_by").map(|id| id.to_hex()).unwrap_or_default(),
+                "teacher_name": teacher_name,
             }));
         }
     }
     HttpResponse::Ok().json(results)
 }
 
+// GET /assignments/{id}/sample
 #[get("/assignments/{id}/sample")]
 pub async fn download_sample(path: web::Path<String>) -> HttpResponse {
     let db = get_db();

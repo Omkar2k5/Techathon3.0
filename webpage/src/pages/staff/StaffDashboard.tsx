@@ -4,10 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BookOpen, Users, LogOut, Plus, Loader2, Bot } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { getTeacherSubjects, createSubject, type Subject } from "@/lib/api";
+import { getTeacherSubjects, createSubject, getTeacherActiveAssignments, type Subject } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const StaffDashboard = () => {
@@ -15,20 +16,25 @@ const StaffDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [activeSubjectIds, setActiveSubjectIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ subject_name: "", subject_code: "" });
 
   useEffect(() => {
-    if (user) fetchSubjects();
+    if (user) fetchAll();
   }, [user]);
 
-  const fetchSubjects = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const data = await getTeacherSubjects(user!.id);
-      setSubjects(data);
+      const [subjectsData, activeData] = await Promise.all([
+        getTeacherSubjects(user!.id),
+        getTeacherActiveAssignments(user!.id),
+      ]);
+      setSubjects(subjectsData);
+      setActiveSubjectIds(new Set(activeData.map((a) => a.subject_id)));
     } catch {
       toast({ title: "Error", description: "Failed to load subjects.", variant: "destructive" });
     } finally {
@@ -44,7 +50,7 @@ const StaffDashboard = () => {
       await createSubject(form.subject_name, form.subject_code, user!.id);
       setDialogOpen(false);
       setForm({ subject_name: "", subject_code: "" });
-      fetchSubjects();
+      fetchAll();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -67,14 +73,16 @@ const StaffDashboard = () => {
               <p className="text-xs text-muted-foreground">Staff Portal · {user?.name}</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate("/chat")}>
-            <Bot className="w-4 h-4" />
-            Assistant
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate("/chat")}>
+              <Bot className="w-4 h-4" />
+              Assistant
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -126,24 +134,38 @@ const StaffDashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjects.map((subject) => (
-              <Card key={subject.id}
-                className="border-border hover:border-foreground/20 transition-colors cursor-pointer group"
-                onClick={() => navigate(`/staff/subject/${subject.id}`)}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <span className="font-mono text-xs px-2 py-1 bg-secondary text-secondary-foreground rounded">
-                      {subject.subject_code}
-                    </span>
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-foreground group-hover:text-foreground/80 transition-colors">
-                    {subject.subject_name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-2">Click to manage assignments →</p>
-                </CardContent>
-              </Card>
-            ))}
+            {subjects.map((subject) => {
+              const isLive = activeSubjectIds.has(subject.id);
+              return (
+                <Card key={subject.id}
+                  className={`border-border hover:border-foreground/20 transition-colors cursor-pointer group ${isLive ? "ring-2 ring-green-500/40" : ""}`}
+                  onClick={() => navigate(`/staff/subject/${subject.id}`)}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <span className="font-mono text-xs px-2 py-1 bg-secondary text-secondary-foreground rounded">
+                        {subject.subject_code}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {isLive && (
+                          <Badge className="bg-green-500 text-white gap-1 text-xs">
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                            Lab Active
+                          </Badge>
+                        )}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Users className="w-3.5 h-3.5" />
+                          {(subject as any).student_count ?? 0}
+                        </div>
+                      </div>
+                    </div>
+                    <h3 className="font-semibold text-foreground group-hover:text-foreground/80 transition-colors">
+                      {subject.subject_name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-2">Click to manage assignments →</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

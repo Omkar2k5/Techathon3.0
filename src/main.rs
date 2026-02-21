@@ -63,6 +63,16 @@ async fn get_peers() -> Result<HttpResponse, actix_web::Error> {
     Ok(HttpResponse::Ok().json(peer_conversations))
 }
 
+#[get("/network/peers")]
+async fn get_network_peers() -> HttpResponse {
+    let peers = udp::LLM_UDP_PEERS.lock().await;
+    let ips: Vec<&String> = peers.iter().collect();
+    HttpResponse::Ok().json(serde_json::json!({
+        "count": ips.len(),
+        "peers": ips,
+    }))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Initialize conversations directory
@@ -113,6 +123,7 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api")
                     .service(llm::chat)
                     .service(llm::llm_proxy)
+                    .service(get_network_peers)
                     .configure(lab_module::config),
             )
             .service(get_peers)

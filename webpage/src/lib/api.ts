@@ -74,6 +74,9 @@ export interface ActiveAssignment extends Assignment {
     subject_name: string;
     subject_code: string;
     has_sample: boolean;
+    teacher_name: string;
+    teacher_id: string;
+    start_time: string;
 }
 
 export async function getSubjectAssignments(subjectId: string): Promise<Assignment[]> {
@@ -94,7 +97,11 @@ export async function createAssignment(formData: FormData): Promise<{ id: string
 }
 
 export async function startAssignment(id: string): Promise<void> {
-    await fetch(`${BASE}/api/assignments/start/${id}`, { method: "POST" });
+    const res = await fetch(`${BASE}/api/assignments/start/${id}`, { method: "POST" });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Server returned ${res.status}`);
+    }
 }
 
 export async function closeAssignment(id: string): Promise<void> {
@@ -164,3 +171,67 @@ export async function sendChatMessage(payload: ChatPayload): Promise<ChatReply> 
     return res.json();
 }
 
+// ── Subject Enrollment ─────────────────────────────────────
+export async function joinSubject(student_id: string, subject_code: string) {
+    const res = await fetch(`${BASE}/api/subjects/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id, subject_code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to join subject");
+    return data as { message: string; subject_name: string; subject_code: string };
+}
+
+export interface EnrolledStudent { id: string; name: string; roll_no: string; email: string; }
+
+export async function getSubjectStudents(subject_id: string): Promise<EnrolledStudent[]> {
+    const res = await fetch(`${BASE}/api/subjects/${subject_id}/students`);
+    return res.ok ? res.json() : [];
+}
+
+export async function enrollStudent(subject_id: string, roll_no: string) {
+    const res = await fetch(`${BASE}/api/subjects/${subject_id}/enroll`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roll_no }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to enroll student");
+    return data as { message: string; name: string };
+}
+
+export async function removeStudent(subject_id: string, student_id: string) {
+    const res = await fetch(`${BASE}/api/subjects/${subject_id}/students/${student_id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to remove student");
+}
+
+// ── Assignment Editing ─────────────────────────────────────
+export interface AssignmentPatch {
+    assignment_name?: string;
+    time_limit_minutes?: number;
+    deadline?: string;
+    allowed_file_types?: string[];
+}
+export async function editAssignment(id: string, patch: AssignmentPatch) {
+    const res = await fetch(`${BASE}/api/assignments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update");
+    return data;
+}
+
+// ── Teacher Active Labs ────────────────────────────────────
+export async function getTeacherActiveAssignments(teacher_id: string): Promise<{ id: string; subject_id: string; assignment_name: string }[]> {
+    const res = await fetch(`${BASE}/api/assignments/active?teacher_id=${teacher_id}`);
+    return res.ok ? res.json() : [];
+}
+
+// ── Network Peers ──────────────────────────────────────────
+export async function getPeerCount(): Promise<{ count: number; peers: string[] }> {
+    const res = await fetch(`${BASE}/api/network/peers`);
+    return res.ok ? res.json() : { count: 0, peers: [] };
+}
