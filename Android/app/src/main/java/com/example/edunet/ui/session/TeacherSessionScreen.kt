@@ -89,7 +89,7 @@ fun TeacherSessionScreen(
         }
         val srv = SessionServer(teacherName = teacherName, subjectName = subjectName, subjectCode = subjectCode)
         srv.start()
-        val bc = SessionBroadcaster(subjectCode = subjectCode, url = url)
+        val bc = SessionBroadcaster(context = context, subjectCode = subjectCode, url = url)
         bc.start()
         server      = srv
         broadcaster = bc
