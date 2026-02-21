@@ -1,0 +1,46 @@
+[{
+  "_id": {
+    "$oid": "69999c360991a319af91f4ed"
+  },
+  "subject_id": {
+    "$oid": "69999c090991a319af91f4ec"
+  },
+  "assignment_name": "Applet",
+  "sample_file_path": "lab_storage/69999c090991a319af91f4ec/Applet/TECHNICAL_PAPER.md",
+  "allowed_file_types": [
+    ".cpp",
+    ".py",
+    ".java",
+    ".c"
+  ],
+  "time_limit_minutes": 120,
+  "start_time": "2026-02-21T12:04:05.664003400+00:00",
+  "deadline": "2026-02-21T11:54:00.000Z",
+  "is_active": false,
+  "created_by": {
+    "$oid": "699981d22fa3c16a0201f475"
+  },
+  "created_at": "2026-02-21T11:51:18.878231+00:00"
+},
+{
+  "_id": {
+    "$oid": "6999a09150d08d101e29df37"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "assignment_name": "Binary Search ",
+  "sample_file_path": "lab_storage/699981d22fa3c16a0201f47d/Binary_Search_/CIS_Innovative_Mindset.html",
+  "allowed_file_types": [
+    ".cpp",
+    ".py"
+  ],
+  "time_limit_minutes": 60,
+  "start_time": "2026-02-21T12:10:27.005103800+00:00",
+  "deadline": "2026-02-21T12:09:00.000Z",
+  "is_active": false,
+  "created_by": {
+    "$oid": "699981d22fa3c16a0201f475"
+  },
+  "created_at": "2026-02-21T12:09:53.579374800+00:00"
+}]

@@ -1,0 +1,117 @@
+[{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f475"
+  },
+  "name": "Prof. Ahmed Khan",
+  "email": "ahmed@edunet.in",
+  "roll_no": null,
+  "password": "teacher123",
+  "role": "teacher",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.738Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f476"
+  },
+  "name": "Dr. Priya Sharma",
+  "email": "priya@edunet.in",
+  "roll_no": null,
+  "password": "teacher123",
+  "role": "teacher",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.772Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f477"
+  },
+  "name": "Aarav Mehta",
+  "email": "21aiml101@student.edunet.in",
+  "roll_no": "21AIML101",
+  "password": "student123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.788Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f478"
+  },
+  "name": "Sneha Patil",
+  "email": "abc@gmail.com",
+  "roll_no": "21AIML102",
+  "password": "student123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.803Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f479"
+  },
+  "name": "Rohan Desai",
+  "email": "21aiml103@student.edunet.in",
+  "roll_no": "21AIML103",
+  "password": "student123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.817Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f47a"
+  },
+  "name": "Prachi Joshi",
+  "email": "21aiml104@student.edunet.in",
+  "roll_no": "21AIML104",
+  "password": "student123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.830Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f47b"
+  },
+  "name": "Kabir Singh",
+  "email": "21cs201@student.edunet.in",
+  "roll_no": "21CS201",
+  "password": "student123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.846Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f47c"
+  },
+  "name": "Tanvi Naik",
+  "email": "21cs202@student.edunet.in",
+  "roll_no": "21CS202",
+  "password": "student123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.861Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6999a8e14e8095c478bf7dcf"
+  },
+  "name": "Aarav Mehta",
+  "email": "ab@gmail.com",
+  "roll_no": "21AIML101",
+  "password": "stu123",
+  "role": "student",
+  "created_at": {
+    "$date": "2026-02-21T09:58:42.788Z"
+  }
+}]

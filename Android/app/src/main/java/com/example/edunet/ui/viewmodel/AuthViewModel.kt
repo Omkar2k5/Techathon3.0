@@ -33,8 +33,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val result = MongoRepository.login(email.trim(), password)
             if (result is AuthResult.Success) {
-                // ✅ Persist session so user stays logged in
-                session.saveSession(result.name, result.email, result.role)
+                session.saveSession(result.userId, result.name, result.email, result.role)
                 _uiState.value = AuthUiState.Success(result.role, result.name, result.email)
             } else {
                 _uiState.value = AuthUiState.Error((result as AuthResult.Error).message)
@@ -55,8 +54,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val result = MongoRepository.signUp(name.trim(), email.trim(), password, role)
             if (result is AuthResult.Success) {
-                // ✅ Persist session after signup too
-                session.saveSession(result.name, result.email, result.role)
+                session.saveSession(result.userId, result.name, result.email, result.role)
                 _uiState.value = AuthUiState.Success(result.role, result.name, result.email)
             } else {
                 _uiState.value = AuthUiState.Error((result as AuthResult.Error).message)

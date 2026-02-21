@@ -1,0 +1,168 @@
+[{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f480"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f477"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f481"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f477"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47e"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f482"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f478"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f483"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f478"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47e"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f484"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f479"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f485"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f479"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47e"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f486"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f47a"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f487"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f47a"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47e"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f488"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f47b"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f489"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f47b"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47f"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f48a"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f47c"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47d"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "699981d22fa3c16a0201f48b"
+  },
+  "student_id": {
+    "$oid": "699981d22fa3c16a0201f47c"
+  },
+  "subject_id": {
+    "$oid": "699981d22fa3c16a0201f47f"
+  },
+  "enrolled_at": {
+    "$date": "2026-02-21T09:58:42.936Z"
+  }
+}]
