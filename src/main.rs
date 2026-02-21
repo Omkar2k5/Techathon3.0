@@ -4,6 +4,7 @@ mod tcp;
 mod llm;
 mod conversation;
 mod persistence;
+mod lab_module;
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -65,15 +66,12 @@ async fn get_peers() -> Result<HttpResponse, actix_web::Error> {
     println!("API: Received request for peer conversations");
     let peer_conversations = CONVERSATION_STORE.get_peer_conversations().await;
     println!("API: Found {} peer conversations", peer_conversations.len());
-    for (peer, conv) in &peer_conversations {
-        println!("API: Peer {} has {} messages", peer, conv.messages.len());
-    }
     Ok(HttpResponse::Ok().json(peer_conversations))
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize conversations directory silently
+    // Initialize conversations directory
     if let Err(e) = persistence::init_conversations_dir().await {
         eprintln!("Error initializing conversations directory: {}", e);
         return Err(e);
@@ -82,6 +80,11 @@ async fn main() -> std::io::Result<()> {
     // Load saved conversations
     if let Err(e) = CONVERSATION_STORE.load_saved_conversations().await {
         eprintln!("Error loading saved conversations: {}", e);
+    }
+
+    // Initialize MongoDB for lab module
+    if let Err(e) = lab_module::mongo_connection::init_db().await {
+        eprintln!("LAB: MongoDB init failed: {} (lab features disabled)", e);
     }
 
     let received_ips = Arc::new(Mutex::new(HashSet::new()));
@@ -104,10 +107,13 @@ async fn main() -> std::io::Result<()> {
     let received_ips_clone = received_ips.clone();
     tokio::spawn(connect_to_peers(received_ips_clone));
 
-    // Open web browser silently
+    // Start lab deadline scheduler
+    tokio::spawn(lab_module::scheduler::run_scheduler());
+
+    // Open web browser
     let _ = open::that("http://localhost:8080/app/");
     
-    // Start HTTP server without console output
+    // Start HTTP server
     HttpServer::new(|| {
         App::new()
         .wrap(
@@ -119,7 +125,8 @@ async fn main() -> std::io::Result<()> {
                 .max_age(3600)
         )
             .service(web::scope("/api")
-                .service(llm::chat))
+                .service(llm::chat)
+                .configure(lab_module::config))
             .service(get_peers)
             .service(get_index)
             .service(get_root_files)

@@ -1,0 +1,152 @@
+# EduNet College Portal – Implementation Plan
+
+LAN-only offline lab portal. Subject → Assignment workflow. Verified against actual codebase.
+
+> [!NOTE]
+> **Confirmed from code:** HTTP server = `:8080`, TCP = `:7878`, UDP = `:5000`, broadcast every 30s. No MongoDB exists yet.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Browser --> H["Actix :8080\nmain.rs"]
+    H --> Lab["lab_module\n(new)"]
+    Lab --> Mongo["MongoDB :27017\nneuromesh_lab"]
+    Lab --> Store["/lab_storage/"]
+    UDP["UDP :5000\nudp/mod.rs"] -- "LAB_ASSIGNMENT\n(extend BroadcastMessage)" --> Students
+    TCP["TCP :7878\ntcp/mod.rs"] -- "FILE: marker (reuse)" --> FileUpload
+```
+
+---
+
+## Phase 1 · Auth Layer (Frontend)
+
+### [NEW] `PortalSelector.tsx`
+Full-screen landing, two animated cards.
+
+### [NEW] `StudentLogin.tsx`
+Roll No + Password. Cyan theme. Calls `POST /api/auth/login`.
+
+### [NEW] `StaffLogin.tsx`
+Employee ID + Password. Purple theme. Same endpoint, role=teacher.
+
+### [MODIFY] [App.tsx](file:///e:/Hackathon/AISSMS/webpage/src/App.tsx)
+Add `authState: 'none'|'student'|'staff'` + `userProfile` state. Gates dashboards.
+
+---
+
+## Phase 2 · MongoDB Collections (`neuromesh_lab` @ `localhost:27017`)
+
+| Collection | Fields |
+|---|---|
+| `users` | `name`, `email`, `role` (teacher/student), `roll_no`, `password`, `is_active`, `created_at` |
+| `subjects` | `subject_name`, `subject_code`, `teacher_id`, `is_active`, `created_at` |
+| `subject_enrollments` | `subject_id`, `student_id`, `enrolled_at` |
+| `assignments` | `subject_id`, `assignment_name`, `sample_file_path`, `allowed_file_types[]`, `time_limit_minutes`, `start_time`, `deadline`, `is_active`, `created_by`, `created_at` |
+| `submissions` | `assignment_id`, `subject_id`, `student_id`, `roll_no`, `file_path`, `submitted_at`, `status` |
+
+---
+
+## Phase 3 · Rust Backend (`src/lab_module/`)
+
+```toml
+# Cargo.toml — add:
+mongodb = { version = "2", features = ["tokio-runtime"] }
+```
+
+```
+src/lab_module/
+ ├── mod.rs              # pub fn config(cfg) — registers all /api/ routes
+ ├── mongo_connection.rs # Lazy<Client> singleton  
+ ├── role_auth.rs        # POST /api/auth/login
+ ├── subject_manager.rs  # GET /api/subjects/teacher/{id}, /api/subjects/student/{id}
+ ├── assignment_manager.rs # POST /create /start/{id} /close/{id}, GET /active
+ ├── submission_manager.rs # GET /api/assignments/{id}/submissions + /export (CSV)
+ ├── file_transfer.rs    # POST /api/upload — validates, saves to /lab_storage/, inserts submission doc
+ └── scheduler.rs        # tokio::spawn loop every 30s — sets is_active=false past deadline
+```
+
+> [!IMPORTANT]
+> Wire into existing [main.rs](file:///e:/Hackathon/AISSMS/src/main.rs) by adding `mod lab_module;` and `.service(web::scope("/api").service(llm::chat).configure(lab_module::config))`.
+
+### REST API
+| Method | Path | Who |
+|---|---|---|
+| `POST` | `/api/auth/login` | All |
+| `GET` | `/api/subjects/teacher/{id}` | Staff |
+| `GET` | `/api/subjects/student/{id}` | Student |
+| `POST` | `/api/assignments/create` | Staff |
+| `POST` | `/api/assignments/start/{id}` | Staff |
+| `POST` | `/api/assignments/close/{id}` | Staff |
+| `GET` | `/api/assignments/active` | Student |
+| `POST` | `/api/upload` | Student |
+| `GET` | `/api/assignments/{id}/submissions` | Staff |
+| `GET` | `/api/assignments/{id}/export` | Staff (CSV) |
+
+---
+
+## Phase 4 · UDP Broadcast Extension
+
+Extend existing [udp/mod.rs](file:///e:/Hackathon/AISSMS/src/udp/mod.rs) [BroadcastMessage](file:///e:/Hackathon/AISSMS/src/udp/mod.rs#30-35) struct — add optional `lab_assignment` field:
+
+```rust
+// Extend existing BroadcastMessage:
+struct BroadcastMessage {
+    message_type: String,    // existing
+    has_llm: bool,           // existing
+    timestamp: DateTime<Utc>,// existing
+    lab_assignment: Option<LabAssignmentBroadcast>, // NEW
+}
+```
+
+When `assignment.is_active == true`, populate `lab_assignment` in every 30s broadcast.
+
+---
+
+## Phase 5 · Frontend Dashboards
+
+### [NEW] `StaffDashboard.tsx`
+- Subject cards grid (from `GET /api/subjects/teacher/{id}`)
+- Per subject: assignment list + Create Assignment form (name, sample file, formats, deadline)
+- Active assignment: countdown + submissions table + Close Lab + Export CSV
+
+### [NEW] `StudentDashboard.tsx`
+- Enrolled subjects → active assignments (polls `/api/assignments/active` every 10s)
+- Download sample file, upload solution, deadline countdown, submission status badge
+
+### [MODIFY] [Sidebar.tsx](file:///e:/Hackathon/AISSMS/webpage/src/components/Sidebar.tsx)
+Add **Lab Portal** nav item; shows when logged in.
+
+---
+
+## Phase 6 · File Storage
+
+```
+/lab_storage/subject_{code}/assignment_{id}/
+ ├── sample.pdf
+ └── submissions/{roll_no}_{unix_ts}.{ext}
+```
+
+**Upload validation order:**
+1. Student enrolled in subject?
+2. Assignment `is_active == true`?
+3. `submitted_at < deadline`?
+4. Extension in `allowed_file_types[]`?
+
+---
+
+## Verification Plan
+
+```bash
+cargo build --release
+npm run dev        # http://localhost:8080/app/
+```
+
+1. `mongod` running locally
+2. Seed: 1 teacher, 2 students, 1 subject, enroll students
+3. Staff: create subject → create assignment → Start Lab
+4. Student: see active assignment → download sample → upload `.cpp`
+5. Staff: submission appears in table → Export CSV
+6. Deadline passes (scheduler) → student upload blocked with error
