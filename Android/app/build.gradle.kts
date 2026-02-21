@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.edunet"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -39,6 +39,19 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/io.netty.versions.properties"
+            excludes += "/META-INF/native-image/**/*.properties"
+            excludes += "META-INF/native-image/org.mongodb/bson/native-image.properties"
+            excludes += "META-INF/native-image/org.mongodb/mongodb-driver-core/native-image.properties"
+        }
+    }
 }
 
 dependencies {
@@ -57,5 +70,23 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    // MongoDB Kotlin Coroutine Driver (direct Atlas connection)
+    implementation("org.mongodb:mongodb-driver-kotlin-coroutine:4.11.1") {
+        exclude(group = "org.mongodb", module = "bson-record-codec")
+    }
+    implementation("org.mongodb:bson-kotlinx:4.11.1") {
+        exclude(group = "org.mongodb", module = "bson-record-codec")
+    }
+    // ViewModel + Coroutines
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // HTTP client to talk to local FastAPI backend
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+}
+
+configurations.all {
+    exclude(group = "org.mongodb", module = "bson-record-codec")
 }

@@ -18,12 +18,13 @@ import com.example.edunet.ui.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(
-    onLoginSuccess: (role: String) -> Unit,
-    onNavigateToSignUp: () -> Unit,
+fun SignUpScreen(
+    onSignUpSuccess: (role: String) -> Unit,
+    onNavigateToLogin: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
     var isStaffSelected by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
     var emailOrId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -32,7 +33,7 @@ fun LoginScreen(
     // Navigate on success
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
-            onLoginSuccess((uiState as AuthUiState.Success).role)
+            onSignUpSuccess((uiState as AuthUiState.Success).role)
             authViewModel.resetState()
         }
     }
@@ -50,7 +51,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Welcome to EDUNET",
+                text = "Join EDUNET",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1E1E2C)
@@ -59,7 +60,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Offline Knowledge Sharing System",
+                text = "Create your account to start sharing",
                 fontSize = 14.sp,
                 color = Color.Gray
             )
@@ -88,6 +89,26 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Full Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = Color(0xFF1E1E2C),
+                    unfocusedTextColor = Color(0xFF1E1E2C),
+                    focusedIndicatorColor = Color(0xFF1E1E2C),
+                    unfocusedIndicatorColor = Color.LightGray,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    cursorColor = Color(0xFF1E1E2C)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
                 value = emailOrId,
                 onValueChange = { emailOrId = it },
                 label = { Text(if (isStaffSelected) "Staff Email" else "Student Email") },
@@ -110,7 +131,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text("Password (min. 6 characters)") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
@@ -139,7 +160,12 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             Button(
-                onClick = { authViewModel.login(emailOrId, password) },
+                onClick = {
+                    authViewModel.signUp(
+                        name, emailOrId, password,
+                        role = if (isStaffSelected) "teacher" else "student"
+                    )
+                },
                 enabled = uiState !is AuthUiState.Loading,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -150,14 +176,14 @@ fun LoginScreen(
                 if (uiState is AuthUiState.Loading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(text = "Login", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(text = "Sign Up", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { onNavigateToSignUp() }) {
-                Text("Don't have an account? Sign Up", color = Color(0xFF1E1E2C))
+            TextButton(onClick = { onNavigateToLogin() }) {
+                Text("Already have an account? Login", color = Color(0xFF1E1E2C))
             }
         }
     }
