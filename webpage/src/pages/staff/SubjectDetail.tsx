@@ -5,20 +5,63 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft, Plus, Play, Clock, FileCode, Upload, Users,
-  CheckCircle, Timer, Square, Loader2, Download
+  CheckCircle, Timer, Square, Loader2, Download, RefreshCw
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   getSubjectAssignments, createAssignment, startAssignment,
-  closeAssignment, getSubmissions, exportCsvUrl,
-  type Assignment, type Submission
+  closeAssignment, getSubmissions, exportCsvUrl, getTeacherSubjects,
+  type Assignment, type Submission, type Subject
 } from "@/lib/api";
-import { getTeacherSubjects, type Subject } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+
+function LiveTimer({ deadline, onExpire }: { deadline: string; onExpire?: () => void }) {
+  const [label, setLabel] = useState("");
+  const [pct, setPct] = useState(100);
+
+  useEffect(() => {
+    const mountTime = Date.now();
+    const end = new Date(deadline).getTime();
+    const total = Math.max(1, end - mountTime);
+
+    const update = () => {
+      const diff = end - Date.now();
+      if (diff <= 0) {
+        setLabel("Deadline reached");
+        setPct(0);
+        onExpire?.();
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLabel(h > 0 ? `${h}h ${m}m ${s}s left` : `${m}m ${s}s left`);
+      setPct(Math.max(0, (diff / total) * 100));
+    };
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [deadline]);
+
+  const barColor = pct > 40 ? "bg-primary" : pct > 15 ? "bg-orange-500" : "bg-red-500";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <Clock className="w-3.5 h-3.5" />
+        {label}
+      </div>
+      <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-[width] duration-1000 ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
 
 const SubjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +73,7 @@ const SubjectDetail = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission[]>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState<Record<string, boolean>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -43,11 +87,17 @@ const SubjectDetail = () => {
   });
 
   useEffect(() => {
-    if (user && id) {
-      fetchSubject();
-      fetchAssignments();
-    }
+    if (user && id) { fetchSubject(); fetchAssignments(); }
   }, [user, id]);
+
+  // Auto-poll submissions for active assignments every 15s
+  useEffect(() => {
+    const active = assignments.filter(a => a.is_active);
+    if (active.length === 0) return;
+    active.forEach(a => fetchSubs(a.id));
+    const t = setInterval(() => active.forEach(a => fetchSubs(a.id)), 15000);
+    return () => clearInterval(t);
+  }, [assignments]);
 
   const fetchSubject = async () => {
     const all = await getTeacherSubjects(user!.id);
@@ -59,14 +109,14 @@ const SubjectDetail = () => {
     try {
       const data = await getSubjectAssignments(id!);
       setAssignments(data);
-      // Fetch submissions for active ones
-      data.filter(a => a.is_active).forEach(a => fetchSubs(a.id));
     } finally { setLoading(false); }
   };
 
-  const fetchSubs = async (assignmentId: string) => {
+  const fetchSubs = async (assignmentId: string, manual = false) => {
+    if (manual) setRefreshing(r => ({ ...r, [assignmentId]: true }));
     const subs = await getSubmissions(assignmentId);
     setSubmissions(prev => ({ ...prev, [assignmentId]: subs }));
+    if (manual) setRefreshing(r => ({ ...r, [assignmentId]: false }));
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -89,60 +139,59 @@ const SubjectDetail = () => {
       setDialogOpen(false);
       setForm({ name: "", allowedTypes: ".cpp", timeLimit: "120", deadline: "", sampleFile: null });
       fetchAssignments();
+      toast({ title: "Assignment created", description: "Click 'Start Lab' when ready to go live." });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally { setCreating(false); }
   };
 
-  const handleStart = async (assignmentId: string) => {
-    await startAssignment(assignmentId);
+  const handleStart = async (assignment: Assignment) => {
+    await startAssignment(assignment.id);
     fetchAssignments();
-    toast({ title: "Lab started!", description: "Students can now see and submit this assignment." });
+    toast({ title: "Lab is now LIVE!", description: "Students can see and submit this assignment." });
   };
 
   const handleClose = async (assignmentId: string) => {
     await closeAssignment(assignmentId);
     fetchAssignments();
-    toast({ title: "Lab closed", description: "Submissions are now blocked." });
+    toast({ title: "Lab closed", description: "No more submissions accepted." });
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+      {/* Sticky header */}
+      <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container flex items-center gap-4 h-16 px-6">
           <Button variant="ghost" size="icon" onClick={() => navigate("/staff/dashboard")}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold">{subject?.subject_name ?? "Loading..."}</h1>
+              <h1 className="text-sm font-bold truncate">{subject?.subject_name ?? "Loading..."}</h1>
               {subject && (
-                <span className="font-mono text-xs px-2 py-0.5 bg-secondary rounded">
+                <span className="font-mono text-xs px-2 py-0.5 bg-secondary rounded shrink-0">
                   {subject.subject_code}
                 </span>
               )}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {assignments.filter(a => a.is_active).length > 0
+                ? `${assignments.filter(a => a.is_active).length} live session · submissions auto-refresh`
+                : "No active session"}
+            </p>
           </div>
-        </div>
-      </header>
-
-      <main className="container px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-bold">Assignments</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
+              <Button size="sm" className="gap-2 shrink-0">
                 <Plus className="w-4 h-4" />
                 Create Assignment
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Assignment</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Create New Assignment</DialogTitle></DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label>Assignment Name</Label>
+                  <Label>Assignment Name *</Label>
                   <Input placeholder="e.g. Linked List Implementation" value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                 </div>
@@ -167,8 +216,9 @@ const SubjectDetail = () => {
                         <SelectItem value=".cpp">.cpp</SelectItem>
                         <SelectItem value=".py">.py</SelectItem>
                         <SelectItem value=".java">.java</SelectItem>
+                        <SelectItem value=".c">.c</SelectItem>
                         <SelectItem value=".cpp,.py">.cpp & .py</SelectItem>
-                        <SelectItem value=".cpp,.py,.java">All</SelectItem>
+                        <SelectItem value=".cpp,.py,.java,.c">All common</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -177,7 +227,9 @@ const SubjectDetail = () => {
                     <Select value={form.timeLimit} onValueChange={v => setForm(f => ({ ...f, timeLimit: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="30">30 min</SelectItem>
                         <SelectItem value="60">1 hour</SelectItem>
+                        <SelectItem value="90">90 min</SelectItem>
                         <SelectItem value="120">2 hours</SelectItem>
                         <SelectItem value="180">3 hours</SelectItem>
                       </SelectContent>
@@ -185,120 +237,160 @@ const SubjectDetail = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Deadline</Label>
+                  <Label>Deadline *</Label>
                   <Input type="datetime-local" value={form.deadline}
                     onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
                 </div>
                 <Button className="w-full gap-2" type="submit" disabled={creating}>
-                  {creating ? <><Loader2 className="w-4 h-4 animate-spin" />Creating...</> : <><Plus className="w-4 h-4" />Create Assignment</>}
+                  {creating
+                    ? <><Loader2 className="w-4 h-4 animate-spin" />Creating...</>
+                    : <><Plus className="w-4 h-4" />Create Assignment</>}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
+      </header>
 
+      <main className="container px-6 py-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="space-y-4">
-            {assignments.map((assignment) => (
-              <Card key={assignment.id} className="border-border">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{assignment.assignment_name}</h3>
-                        {assignment.is_active ? (
-                          <Badge className="bg-primary text-primary-foreground gap-1 text-xs">
-                            <span className="w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse" />
-                            LIVE
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">Inactive</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {assignment.time_limit_minutes} min
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FileCode className="w-3.5 h-3.5" />
-                          {assignment.allowed_file_types.join(", ")}
-                        </span>
-                        {assignment.is_active && (
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5" />
-                            {(submissions[assignment.id] ?? []).length} submitted
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {assignment.is_active ? (
-                        <>
-                          <Button variant="outline" size="sm" className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                            onClick={() => handleClose(assignment.id)}>
-                            <Square className="w-3.5 h-3.5" />End Lab
-                          </Button>
-                          <Button variant="outline" size="sm" className="gap-1"
-                            onClick={() => window.open(exportCsvUrl(assignment.id), "_blank")}>
-                            <Download className="w-3.5 h-3.5" />CSV
-                          </Button>
-                        </>
-                      ) : (
-                        <Button size="sm" className="gap-1" onClick={() => handleStart(assignment.id)}>
-                          <Play className="w-3.5 h-3.5" />Start Lab
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {assignment.is_active && (
-                    <div className="mt-6 border-t border-border pt-4">
-                      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" />
-                        Submissions ({(submissions[assignment.id] ?? []).length})
-                      </h4>
-                      <div className="space-y-2">
-                        {(submissions[assignment.id] ?? []).map((sub) => (
-                          <div key={sub.id} className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-md">
-                            <div className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs text-primary-foreground font-medium">
-                                {sub.roll_no.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium">{sub.roll_no}</p>
-                                <p className="text-xs text-muted-foreground font-mono">
-                                  {sub.file_path.split("/").pop()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Timer className="w-3 h-3" />
-                              {new Date(sub.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </div>
-                          </div>
-                        ))}
-                        {(submissions[assignment.id] ?? []).length === 0 && (
-                          <p className="text-xs text-center text-muted-foreground py-4">No submissions yet</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-
             {assignments.length === 0 && (
-              <div className="text-center py-16 text-muted-foreground">
+              <div className="text-center py-20 text-muted-foreground">
                 <FileCode className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p className="text-sm">No assignments yet</p>
+                <p className="text-sm font-medium">No assignments yet</p>
                 <p className="text-xs mt-1">Create your first assignment to get started</p>
               </div>
             )}
+            {assignments.map((assignment) => {
+              const subs = submissions[assignment.id] ?? [];
+              return (
+                <Card key={assignment.id}
+                  className={`border-border overflow-hidden ${assignment.is_active ? "ring-1 ring-primary/20" : ""}`}>
+                  <CardContent className="p-0">
+                    {/* Assignment header row */}
+                    <div className="px-6 py-5 flex items-start justify-between gap-4">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-foreground">{assignment.assignment_name}</h3>
+                          {assignment.is_active ? (
+                            <Badge className="bg-primary text-primary-foreground gap-1 text-xs">
+                              <span className="w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse" />
+                              LIVE
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {assignment.time_limit_minutes} min
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <FileCode className="w-3.5 h-3.5" />
+                            {assignment.allowed_file_types.join(", ")}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5" />
+                            {subs.length} submitted
+                          </span>
+                          <span>Deadline: {new Date(assignment.deadline).toLocaleString()}</span>
+                        </div>
+                        {assignment.is_active && (
+                          <LiveTimer deadline={assignment.deadline} onExpire={fetchAssignments} />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 pt-1">
+                        {assignment.is_active ? (
+                          <>
+                            <Button variant="outline" size="sm" className="gap-1 text-xs h-8"
+                              onClick={() => fetchSubs(assignment.id, true)}
+                              disabled={refreshing[assignment.id]}>
+                              <RefreshCw className={`w-3.5 h-3.5 ${refreshing[assignment.id] ? "animate-spin" : ""}`} />
+                              Refresh
+                            </Button>
+                            <Button variant="outline" size="sm" className="gap-1 text-xs h-8"
+                              onClick={() => window.open(exportCsvUrl(assignment.id), "_blank")}>
+                              <Download className="w-3.5 h-3.5" />CSV
+                            </Button>
+                            <Button variant="outline" size="sm"
+                              className="gap-1 text-xs h-8 text-destructive border-destructive/30 hover:bg-destructive/10"
+                              onClick={() => handleClose(assignment.id)}>
+                              <Square className="w-3.5 h-3.5" />End Lab
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button variant="outline" size="sm" className="gap-1 text-xs h-8"
+                              onClick={() => window.open(exportCsvUrl(assignment.id), "_blank")}>
+                              <Download className="w-3.5 h-3.5" />CSV
+                            </Button>
+                            <Button size="sm" className="gap-1 text-xs h-8"
+                              onClick={() => handleStart(assignment)}>
+                              <Play className="w-3.5 h-3.5" />Start Lab
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Submissions panel */}
+                    <div className="border-t border-border bg-secondary/20 px-6 py-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Submissions ({subs.length})
+                        </h4>
+                        {!assignment.is_active && (
+                          <button onClick={() => fetchSubs(assignment.id, true)}
+                            className="text-xs text-muted-foreground hover:text-foreground underline">
+                            Load
+                          </button>
+                        )}
+                      </div>
+                      {subs.length === 0 ? (
+                        <p className="text-xs text-center text-muted-foreground py-3">
+                          {assignment.is_active ? "Waiting for submissions..." : "No submissions recorded."}
+                        </p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                          {subs.map((sub) => (
+                            <div key={sub.id}
+                              className="flex items-center justify-between py-2 px-3 bg-card rounded-md border border-border">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs text-primary-foreground font-bold shrink-0">
+                                  {sub.roll_no.slice(-2).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold">{sub.roll_no}</p>
+                                  <p className="text-xs text-muted-foreground font-mono">
+                                    {sub.file_path.split("/").pop()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sub.status === "submitted" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                                  {sub.status}
+                                </span>
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Timer className="w-3 h-3" />
+                                  {new Date(sub.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
