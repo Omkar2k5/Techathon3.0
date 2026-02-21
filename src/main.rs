@@ -111,7 +111,7 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(lab_module::scheduler::run_scheduler());
 
     // Open web browser
-    let _ = open::that("http://localhost:8080/app/");
+    let _ = open::that("http://localhost:5173");
     
     // Start HTTP server
     HttpServer::new(|| {

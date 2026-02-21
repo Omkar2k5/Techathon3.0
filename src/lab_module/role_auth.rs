@@ -30,8 +30,7 @@ pub async fn login(body: web::Json<LoginRequest>) -> HttpResponse {
         doc! {
             "roll_no": &body.identifier,
             "password": &body.password,
-            "role": "student",
-            "is_active": true
+            "role": "student"
         }
     } else {
         doc! {
@@ -40,8 +39,7 @@ pub async fn login(body: web::Json<LoginRequest>) -> HttpResponse {
                 { "name": &body.identifier }
             ],
             "password": &body.password,
-            "role": "teacher",
-            "is_active": true
+            "role": "teacher"
         }
     };
 
