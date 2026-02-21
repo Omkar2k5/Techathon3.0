@@ -1,0 +1,207 @@
+{
+    "collections": {
+        "users": {
+            "description": "Stores user accounts including both teachers and students",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Primary ID"
+                },
+                "name": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Full name of user"
+                },
+                "email": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Login email"
+                },
+                "role": {
+                    "type": "String",
+                    "required": true,
+                    "description": "\"teacher\" or \"student\""
+                },
+                "created_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Account creation time"
+                },
+                "is_active": {
+                    "type": "Boolean",
+                    "required": true,
+                    "description": "Account status"
+                }
+            }
+        },
+        "subjects": {
+            "description": "Stores subjects/courses created by teachers",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Subject ID"
+                },
+                "subject_name": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Subject name"
+                },
+                "subject_code": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Subject code (e.g., DS101)"
+                },
+                "teacher_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Reference to teacher (users._id)"
+                },
+                "created_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Creation timestamp"
+                },
+                "is_active": {
+                    "type": "Boolean",
+                    "required": true,
+                    "description": "Subject status"
+                }
+            }
+        },
+        "subject_enrollments": {
+            "description": "Stores the many-to-many relationship between students and subjects",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Enrollment ID"
+                },
+                "subject_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "subjects._id",
+                    "description": "Reference to subjects._id"
+                },
+                "student_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Reference to users._id"
+                },
+                "enrolled_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Enrollment date"
+                }
+            }
+        },
+        "assignments": {
+            "description": "Stores assignments created for subjects",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Assignment ID"
+                },
+                "subject_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "subjects._id",
+                    "description": "Reference to subject"
+                },
+                "assignment_name": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Name of assignment"
+                },
+                "sample_file_path": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Path of uploaded sample file"
+                },
+                "allowed_file_types": {
+                    "type": "Array",
+                    "required": true,
+                    "description": "Example: [\".cpp\", \".py\"]"
+                },
+                "time_limit_minutes": {
+                    "type": "Number",
+                    "required": true,
+                    "description": "Example: 120"
+                },
+                "start_time": {
+                    "type": "ISODate",
+                    "required": false,
+                    "description": "Set on Start - Lab start time"
+                },
+                "deadline": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Submission deadline"
+                },
+                "is_active": {
+                    "type": "Boolean",
+                    "required": true,
+                    "description": "Active session flag"
+                },
+                "created_by": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Teacher ID"
+                },
+                "created_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Creation time"
+                }
+            }
+        },
+        "submissions": {
+            "description": "Stores student submissions for assignments",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Submission ID"
+                },
+                "assignment_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "assignments._id",
+                    "description": "Reference to assignment"
+                },
+                "subject_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "subjects._id",
+                    "description": "Reference to subject"
+                },
+                "student_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Reference to user"
+                },
+                "file_path": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Stored file location"
+                },
+                "submitted_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "Submission time"
+                },
+                "status": {
+                    "type": "String",
+                    "required": false,
+                    "description": "Optional: \"submitted\", \"late\""
+                }
+            }
+        }
+    }
+}
