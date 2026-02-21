@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- For QR code sharing (cache) -->
+    <cache-path name="cache" path="." />
+    <!-- For files downloaded from teacher (Downloads/EduNet) -->
+    <external-path name="downloads" path="Download/EduNet/" />
+</paths>

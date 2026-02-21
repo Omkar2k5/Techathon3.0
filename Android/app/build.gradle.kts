@@ -50,6 +50,7 @@ android {
             excludes += "/META-INF/native-image/**/*.properties"
             excludes += "META-INF/native-image/org.mongodb/bson/native-image.properties"
             excludes += "META-INF/native-image/org.mongodb/mongodb-driver-core/native-image.properties"
+            excludes += "META-INF/nanohttpd/**"
         }
     }
 }
@@ -85,6 +86,16 @@ dependencies {
 
     // HTTP client to talk to local FastAPI backend
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Offline session: embedded HTTP server on teacher's device
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+
+    // QR code generation + scanning
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.google.zxing:core:3.5.3")
+
+    // Image loading for QR bitmap display
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }
 
 configurations.all {

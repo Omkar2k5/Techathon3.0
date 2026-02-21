@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,15 +44,21 @@ private val TextSec   = Color(0xFFB0B0C8)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onLogout: () -> Unit) {
+fun HomeScreen(
+    onLogout: () -> Unit,
+    onStartSession: (teacherName: String, subjectName: String, subjectCode: String) -> Unit = { _, _, _ -> },
+    onJoinSession: () -> Unit = {}
+) {
     val context = LocalContext.current
     val session = remember { SessionManager(context) }
     val role    = session.getUserRole()
 
     if (role == "teacher") {
-        TeacherHomeScreen(session = session, onLogout = onLogout)
+        TeacherHomeScreen(session = session, onLogout = onLogout, onStartSession = { sn, sc ->
+            onStartSession(session.getUserName(), sn, sc)
+        })
     } else {
-        StudentHomeScreen(session = session, onLogout = onLogout)
+        StudentHomeScreen(session = session, onLogout = onLogout, onJoinSession = onJoinSession)
     }
 }
 
@@ -60,7 +67,7 @@ fun HomeScreen(onLogout: () -> Unit) {
 // ─────────────────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit) {
+fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit, onJoinSession: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var subjects by remember { mutableStateOf<List<SubjectItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -188,17 +195,29 @@ fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit) {
             }
         }
 
-        // ── FAB: Join Class ───────────────────────────────────────────────────
-        ExtendedFloatingActionButton(
-            onClick = { showJoinDialog = true },
-            icon    = { Icon(Icons.Default.Add, contentDescription = null) },
-            text    = { Text("Join Class") },
-            containerColor = Accent,
-            contentColor   = Color.White,
+        // ── FAB row: Join Session + Join Class ───────────────────────────────
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
-        )
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            SmallFloatingActionButton(
+                onClick = { onJoinSession() },
+                containerColor = Color(0xFF00D4FF),
+                contentColor = Color.White
+            ) {
+                Text("📡", fontSize = 18.sp)
+            }
+            ExtendedFloatingActionButton(
+                onClick = { showJoinDialog = true },
+                icon    = { Icon(Icons.Default.Add, contentDescription = null) },
+                text    = { Text("Join Class") },
+                containerColor = Accent,
+                contentColor   = Color.White
+            )
+        }
     }
 
     // ── Join Dialog ───────────────────────────────────────────────────────────
@@ -220,7 +239,11 @@ fun StudentHomeScreen(session: SessionManager, onLogout: () -> Unit) {
 // ─────────────────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TeacherHomeScreen(session: SessionManager, onLogout: () -> Unit) {
+fun TeacherHomeScreen(
+    session: SessionManager,
+    onLogout: () -> Unit,
+    onStartSession: (subjectName: String, subjectCode: String) -> Unit = { _, _ -> }
+) {
     var subjects by remember { mutableStateOf<List<SubjectItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg  by remember { mutableStateOf("") }
@@ -328,7 +351,7 @@ fun TeacherHomeScreen(session: SessionManager, onLogout: () -> Unit) {
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(subjects) { subj ->
-                                TeacherSubjectCard(subj)
+                                TeacherSubjectCard(subj, onStartSession = { onStartSession(subj.subjectName, subj.subjectCode) })
                             }
                         }
                     }
@@ -414,7 +437,7 @@ private fun StudentSubjectCard(subj: SubjectItem) {
 }
 
 @Composable
-private fun TeacherSubjectCard(subj: SubjectItem) {
+private fun TeacherSubjectCard(subj: SubjectItem, onStartSession: () -> Unit = {}) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -423,7 +446,7 @@ private fun TeacherSubjectCard(subj: SubjectItem) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -439,19 +462,24 @@ private fun TeacherSubjectCard(subj: SubjectItem) {
                     textAlign = TextAlign.Center
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(subj.subjectName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPri)
                 Spacer(modifier = Modifier.height(3.dp))
                 Text("Code: ${subj.subjectCode}", fontSize = 12.sp, color = TextSec)
+                Spacer(modifier = Modifier.height(3.dp))
+                Text("👥 ${subj.studentCount} students", fontSize = 11.sp, color = GreenOk)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "${subj.studentCount}", fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp, color = GreenOk
-                )
-                Text("students", fontSize = 10.sp, color = TextSec)
+            Button(
+                onClick = onStartSession,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenOk),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
