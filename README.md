@@ -17,7 +17,8 @@ EduNet is a next-generation Learning Management System (LMS) designed for constr
   - View active campus-wide labs and personal assignments.
   - Chat with the AI assistant.
   - See active network peers (showing hardware availability).
-  - Upload solutions securely.
+  - Upload solutions securely and view complete submission history.
+  - Download previously submitted code directly from the Rust backend for review.
 
 ## Technology Stack
 

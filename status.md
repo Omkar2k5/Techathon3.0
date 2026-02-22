@@ -183,6 +183,11 @@ The upload engine utilizes `actix-multipart`. Instead of loading massive 50MB PD
 2. The file is streamed to `lab_storage/<assignment_id>/<roll_no>/filename.ext`.
 3. A success record is committed to the `submissions` MongoDB collection containing the relative path and exact `submitted_at` UTC timestamp.
 
+### 5.4 Student Subject History (Post-Submission Review)
+Students have access to a dedicated **Student Subject History** portal. This allows them to click on any joined subject from their dashboard and overview their entire submission record chronologically.
+- **Review & Validation:** Students can review exactly what files they submitted, complete with accurate timestamps, confirming their deliverables to the server before the deadline.
+- **Submission Download:** A one-click download feature allows students to pull their code directly from the Rust backend for future reference or exams, verifying the exact byte format processed by the LMS.
+
 ---
 
 ## 6. Database Schema (MongoDB NoSQL)
