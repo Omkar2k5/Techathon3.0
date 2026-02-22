@@ -1,278 +1,128 @@
 # EduNet Lab Portal
-LAN-Based Practical Lab Management System
+LAN-Based Practical Lab Management System & Peer-to-Peer Android Client
 
-EduNet Lab Portal is a college lab management system that enables staff to conduct practical sessions and students to enroll in subjects and submit lab work. The system uses a Python/FastAPI backend connected to a MongoDB Atlas cloud database, and a React/TypeScript frontend.
-
----
-
-## Problem Statement
-
-Most existing college lab management systems depend on internet and centralized servers, making them unreliable in low-resource or poor-network environments. EduNet Lab Portal provides a structured, cloud-backed solution for managing practical sessions with role-based access for teachers and students.
+EduNet Lab Portal is a robust college lab management system that enables staff to conduct practical sessions and students to enroll in subjects and submit lab work. The system is multifaceted, utilizing a **Python/FastAPI** backend for web clients, a **MongoDB Atlas** cloud database for state persistence, and a native **Kotlin Android** application equipped with decentralized Peer-to-Peer (P2P) file sharing for offline or low-bandwidth environments.
 
 ---
 
-## Objectives
+## 🚀 Key Features
 
-- Enable staff (teachers) to create and manage subjects and lab sessions efficiently
-- Allow students to discover and join subjects using a class code
-- Enforce role-based access control for teachers and students
-- Provide a clean, modern web interface for both roles
-- Sync data reliably via MongoDB Atlas
-
----
-
-## Key Features
-
-- Role-based authentication (teacher / student) via email & password
-- Student self-registration (signup) and login
-- Subject creation by teachers with unique subject codes
-- Students can join any subject using a class code
-- Enrolled subject listing per student
-- Teacher dashboard showing subject-wise student enrollment counts
-- RESTful API with FastAPI and automatic OpenAPI docs
+- **Role-Based Authentication:** Direct support for Teacher and Student profiles with secure session management.
+- **Python FastAPI REST Backend:** Fast, asynchronous, and auto-documented (Swagger UI) API layer.
+- **Native Android Client (Jetpack Compose):** A modern, responsive mobile app that interfaces directly with MongoDB and local network peers.
+- **Zero-Config P2P Discovery (UDP):** Android devices can automatically discover active Lab Sessions hosted by Teachers utilizing UDP sub-net broadcasting and direct IP probing (saving bandwidth).
+- **Offline File Distribution (NanoHTTPD):** Teachers distribute files to students directly over the Local Area Network (LAN/Hotspots) without requiring external internet. Students sync files locally via embedded NanoHTTPD servers.
 
 ---
 
-## High-Level Architecture
+## 🏗 High-Level Architecture
 
-```
-React Frontend (Vite + TypeScript)
-        |
-        | HTTP/REST API calls
-        v
-Python FastAPI Backend (port 8000)
-        |
-        | PyMongo driver (SRV URI)
-        v
-MongoDB Atlas (techathon database)
-   ├── users
-   ├── subjects
-   └── subject_enrollments
+```mermaid
+graph TD
+    classDef mobile fill:#a3e635,stroke:#4d7c0f,stroke-width:2px,color:#000;
+    classDef backend fill:#60a5fa,stroke:#1d4ed8,stroke-width:2px,color:#fff;
+    classDef db fill:#c084fc,stroke:#7e22ce,stroke-width:2px,color:#fff;
+
+    subgraph "External Web / Cloud Layer"
+        F[(MongoDB Atlas)]:::db
+        B[FastAPI Python Backend]:::backend
+        W[React Frontend Client]:::backend
+    end
+
+    subgraph "Local Area Network (LAN / Hotspot)"
+        T[Teacher Android App]:::mobile
+        S1[Student Android App 1]:::mobile
+        S2[Student Android App 2]:::mobile
+    end
+
+    W -.->|HTTP/REST| B
+    B -->|PyMongo| F
+    T -->|Mongo Kotlin Coroutine| F
+    S1 -->|Mongo Kotlin Coroutine| F
+    
+    T <-->|UDP Broadcast :9877| S1
+    T <-->|NanoHTTPD SessionServer :8080| S1
+    S1 <-->|NanoHTTPD PeerSyncServer :8081| S2
 ```
 
 ---
 
-## Technology Stack
+## 🛠 Technology Stack
 
-### Backend
-- **Language**: Python 3.11+
-- **Framework**: FastAPI 0.111
-- **Server**: Uvicorn (ASGI)
-- **Database Driver**: PyMongo 4.7 (with SRV support)
-- **Validation**: Pydantic v2
+### Cloud & Database
+- **Database:** MongoDB Atlas (Cloud NoSQL)
+- **Schema:** Dynamic Collections (`users`, `subjects`, `subject_enrollments`)
 
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS + shadcn/ui (Radix UI)
-- **HTTP Client**: Native `fetch` API
-- **State Management**: TanStack React Query
+### Web Backend
+- **Framework:** Python 3.11+ with FastAPI
+- **Driver:** PyMongo 4.7 (SRV Support)
+- **Validation:** Pydantic v2
+- **Server:** Uvicorn (ASGI)
 
-### Database
-- **MongoDB Atlas** (cloud-hosted)
-- **Database Name**: `techathon`
-- **Connection**: SRV URI (see setup below)
+### Mobile Client (Android)
+- **Language:** Kotlin
+- **UI Toolkit:** Jetpack Compose (Material 3)
+- **Database Driver:** MongoDB Kotlin Coroutine Driver
+- **Networking:** NanoHTTPD (Embedded Servers), `DatagramSocket` (UDP)
+- **Concurrency:** Kotlin Coroutines (`Dispatchers.IO`)
 
 ---
 
-## Database Collections
-
-| Collection            | Purpose                                          |
-|-----------------------|--------------------------------------------------|
-| `users`               | Stores all teacher and student accounts          |
-| `subjects`            | Stores subjects created by teachers              |
-| `subject_enrollments` | Tracks which students are enrolled in which subjects |
-
-### `users` document structure
-```json
-{
-  "_id": ObjectId,
-  "name": "string",
-  "email": "string",
-  "password": "string (plain text)",
-  "role": "teacher | student",
-  "roll_no": "string | null",
-  "is_active": true,
-  "created_at": "ISO datetime string"
-}
-```
-
-### `subjects` document structure
-```json
-{
-  "_id": ObjectId,
-  "subject_name": "string",
-  "subject_code": "string (unique, uppercase)",
-  "teacher_id": ObjectId,
-  "is_active": true,
-  "created_at": "ISO datetime string"
-}
-```
-
-### `subject_enrollments` document structure
-```json
-{
-  "_id": ObjectId,
-  "student_id": ObjectId,
-  "subject_id": ObjectId,
-  "enrolled_at": "datetime"
-}
-```
-
----
-
-## API Endpoints
+## 📡 API Endpoints (FastAPI)
 
 | Method | Endpoint                          | Description                              |
 |--------|-----------------------------------|------------------------------------------|
-| GET    | `/health`                         | Health check                             |
-| POST   | `/login`                          | Login with email & password              |
-| POST   | `/signup`                         | Create a new student or teacher account  |
-| GET    | `/student/subjects/{student_id}`  | Get all subjects a student is enrolled in|
-| POST   | `/student/join`                   | Enroll a student in a subject by code    |
-| GET    | `/teacher/subjects/{teacher_id}`  | Get all subjects created by a teacher    |
-| POST   | `/teacher/subjects`               | Create a new subject                     |
-
-> **API Docs**: FastAPI auto-generates interactive API docs at `http://localhost:8000/docs` when running locally.
+| GET    | `/health`                         | Health check confirming Uvicorn status   |
+| POST   | `/login`                          | Login for students/teachers              |
+| POST   | `/signup`                         | Account creation                         |
+| GET    | `/student/subjects/{student_id}`  | Retrieve student's enrolled subjects     |
+| POST   | `/student/join`                   | Enroll dynamically using a subject code  |
+| GET    | `/teacher/subjects/{teacher_id}`  | Retrieve subjects authored by teacher    |
+| POST   | `/teacher/subjects`               | Create a new class/subject               |
 
 ---
 
-## Teacher Workflow
+## 📱 Android P2P Workflow
 
-1. Login with teacher email and password (e.g., `ahmed@edunet.in` / `teacher123`)
-2. View all subjects you have created on the dashboard
-3. Create a new subject by providing a **subject name** and a **unique subject code**
-4. Share the subject code with students so they can join
-5. View enrollment counts per subject
-
----
-
-## Student Workflow
-
-1. Sign up with name, email, password and role `student` (or login if already registered)
-2. View your enrolled subjects on the dashboard
-3. Use the **"Join Class"** button and enter the subject code provided by your teacher to enroll
-4. Enrolled subjects appear on your dashboard with the teacher name
+1. **Teacher Initialization:** A teacher opens the Android app, selects a subject, and starts a "Lab Session". The app spins up a `SessionServer` on port `8080` (NanoHTTPD) and begins UDP broadcasting on port `9877`.
+2. **Student Discovery:** A student app listens for the UDP broadcast or probes known hotspot gateways (e.g., `192.168.43.1:8080`).
+3. **P2P Transfer:** Once connected, the student downloads assignment files directly from the teacher's phone over the LAN, eliminating the need to download 50MB PDFs over a slow mobile data connection.
+4. **Peer Syncing:** Students simultaneously run a `PeerSyncServer` on port `8081` to share previously downloaded logs or files with other students bridging network gaps.
 
 ---
 
-## Setup Instructions
+## 💻 Setup Instructions
 
-### Prerequisites
-- Python 3.11 or higher
-- Node.js 18 or higher
-- A MongoDB Atlas account with the `techathon` database and the three collections above
-
----
-
-### 1. Backend Setup
-
+### 1. Python Backend Installation
 ```bash
-# Navigate to the backend folder
 cd backend
-
-# Create and activate a virtual environment (recommended)
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
-
-# Install dependencies
+# Windows: venv\Scripts\activate
+# Unix: source venv/bin/activate
 pip install -r requirements.txt
-
-# Start the backend server
 uvicorn main:app --reload --port 8000
 ```
+Interactive API docs available at `http://localhost:8000/docs`.
 
-The backend will be available at: `http://localhost:8000`
-Interactive API docs: `http://localhost:8000/docs`
+### 2. Android Studio Setup
+1. Open the `/Android` folder in **Android Studio** (Koala or newer recommended).
+2. Sync the Gradle project.
+3. Plug in a physical Android device or launch an emulator.
+4. Run the `app` configuration.
 
-> **MongoDB URI**: The connection string in `backend/main.py` is already configured to connect to the MongoDB Atlas `techathon` database. If credentials change, update the `MONGO_URI` variable in `main.py`.
-
----
-
-### 2. Frontend Setup
-
-> **Note**: The frontend lives in the `webpage` folder inside the `Technathon 3.0 Wasim` directory. Run it from there.
-
+### 3. Frontend Web Setup (Standalone)
+If running the React frontend (housed in the sibling directory `../Technathon 3.0 Wasim/webpage`):
 ```bash
-# Navigate to the frontend folder
 cd "../Technathon 3.0 Wasim/webpage"
-
-# Install dependencies (first time only)
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-The frontend will be available at: `http://localhost:5173`
-
-> The Vite dev server is configured to proxy all `/api` requests to the Rust backend on port 8080. For the Python backend, make sure the frontend API calls point to `http://localhost:8000`.
-
 ---
 
-## Network Ports
+## 🔒 Security Notes
+- **Direct Database Connections:** The Android client currently utilizes a direct MongoDB Atlas connection string. In a full production launch, this should be proxied completely through the FastAPI backend to protect database credentials.
+- **Passwords:** Currently implementing plaintext storage for hackathon testing purposes. Pre-production requires `bcrypt` hashing.
 
-| Service            | Port   |
-|--------------------|--------|
-| Python FastAPI     | 8000   |
-| Vite Dev Server    | 5173   |
-| Rust Backend (EduNet / Wasim) | 8080 |
-| MongoDB Atlas      | Cloud (SRV) |
-
----
-
-## Sample Test Credentials
-
-### Teachers
-| Name               | Email              | Password     |
-|--------------------|-------------------|--------------|
-| Prof. Ahmed Khan   | ahmed@edunet.in   | teacher123   |
-| Dr. Priya Sharma   | priya@edunet.in   | teacher123   |
-
-### Students
-| Name         | Roll No    | Email                              | Password    |
-|--------------|------------|----------------------------------  |-------------|
-| Aarav Mehta  | 21AIML101  | 21aiml101@student.edunet.in        | student123  |
-| Sneha Patil  | 21AIML102  | abc@gmail.com                      | student123  |
-| Rohan Desai  | 21AIML103  | 21aiml103@student.edunet.in        | student123  |
-
----
-
-## Testing Checklist
-
-- [ ] Teacher can log in and view their subjects
-- [ ] Teacher can create a new subject with a unique code
-- [ ] New student can sign up and log in
-- [ ] Student can join a subject using the class code
-- [ ] Student cannot join the same subject twice
-- [ ] Student dashboard shows all enrolled subjects with teacher names
-- [ ] Invalid subject codes are rejected with the correct error message
-
----
-
-## Security Notes
-
-- Passwords are currently stored in **plain text** — this should be hashed (e.g., bcrypt) before production deployment
-- CORS is currently open to all origins (`*`) — restrict to your frontend origin in production
-- MongoDB credentials are hardcoded — move to environment variables (`.env`) before deploying
-
----
-
-## Future Enhancements
-
-- Password hashing and secure session management (JWT)
-- Assignment creation and submission workflow
-- Attendance tracking
-- AI-assisted feedback via NeuroMesh integration
-- Detailed analytics dashboard for teachers
-- Plagiarism detection for code submissions
-
----
-
-## Contributors
-
-Aman Shaikh
-Wasim Pathan
-Omkar Gondkar
-Atharva Mashale
+## 👥 Contributors
+Aman Shaikh • Wasim Pathan • Omkar Gondkar • Atharva Mashale
