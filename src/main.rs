@@ -90,6 +90,9 @@ async fn main() -> std::io::Result<()> {
     if let Err(e) = lab_module::mongo_connection::init_db().await {
         eprintln!("LAB: MongoDB init failed: {} (lab features disabled)", e);
     }
+    
+    // Initialize Local SQLite cache for lab module offline mode
+    lab_module::local_db::init_local_db();
 
     let received_ips = Arc::new(Mutex::new(HashSet::new()));
     let received_ips_clone = received_ips.clone();

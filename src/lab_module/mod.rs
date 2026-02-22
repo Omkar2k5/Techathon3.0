@@ -6,6 +6,7 @@ pub mod submission_manager;
 pub mod file_transfer;
 pub mod scheduler;
 pub mod chat_handler;
+pub mod local_db;
 
 use actix_web::web;
 

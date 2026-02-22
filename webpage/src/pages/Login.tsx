@@ -16,6 +16,7 @@ const Login = () => {
   const [role, setRole] = useState<"staff" | "student">("staff");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -32,7 +33,7 @@ const Login = () => {
         name: data.name,
         role: data.role === "teacher" ? "staff" : "student",
         roll_no: data.roll_no,
-      });
+      }, rememberMe);
       if (data.role === "teacher") {
         navigate("/staff/dashboard");
       } else {
@@ -71,8 +72,8 @@ const Login = () => {
             type="button"
             onClick={() => setRole("staff")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${role === "staff"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
               }`}
           >
             <User className="w-4 h-4" />
@@ -82,8 +83,8 @@ const Login = () => {
             type="button"
             onClick={() => setRole("student")}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${role === "student"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
               }`}
           >
             <GraduationCap className="w-4 h-4" />
@@ -130,6 +131,17 @@ const Login = () => {
                   className="h-11"
                   disabled={loading}
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  disabled={loading}
+                />
+                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">Remember me</Label>
               </div>
               <Button type="submit" className="w-full h-11 text-sm font-semibold" disabled={loading}>
                 {loading ? (

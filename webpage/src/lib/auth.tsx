@@ -9,7 +9,7 @@ interface AuthUser {
 
 interface AuthContextType {
     user: AuthUser | null;
-    setUser: (u: AuthUser | null) => void;
+    setUser: (u: AuthUser | null, rememberMe?: boolean) => void;
     logout: () => void;
 }
 
@@ -22,15 +22,31 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(() => {
         try {
-            const stored = sessionStorage.getItem("edunet_user");
-            return stored ? JSON.parse(stored) : null;
+            const sessionData = sessionStorage.getItem("edunet_user");
+            if (sessionData) return JSON.parse(sessionData);
+
+            const localData = localStorage.getItem("edunet_user");
+            if (localData) return JSON.parse(localData);
+
+            return null;
         } catch { return null; }
     });
 
-    const handleSetUser = useCallback((u: AuthUser | null) => {
+    const handleSetUser = useCallback((u: AuthUser | null, rememberMe: boolean = false) => {
         setUser(u);
-        if (u) sessionStorage.setItem("edunet_user", JSON.stringify(u));
-        else sessionStorage.removeItem("edunet_user");
+        if (u) {
+            const data = JSON.stringify(u);
+            if (rememberMe) {
+                localStorage.setItem("edunet_user", data);
+                sessionStorage.removeItem("edunet_user");
+            } else {
+                sessionStorage.setItem("edunet_user", data);
+                localStorage.removeItem("edunet_user");
+            }
+        } else {
+            sessionStorage.removeItem("edunet_user");
+            localStorage.removeItem("edunet_user");
+        }
     }, []);
 
     const logout = useCallback(() => handleSetUser(null), [handleSetUser]);
