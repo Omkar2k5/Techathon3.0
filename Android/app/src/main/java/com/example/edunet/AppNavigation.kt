@@ -56,6 +56,11 @@ fun AppNavigation() {
                     val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
                     navController.navigate("teacher_session/$tEnc/$sEnc/$cEnc")
                 },
+                onOpenAttendance = { subjectCode, subjectName ->
+                    val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
+                    val sEnc = URLEncoder.encode(subjectName, "UTF-8")
+                    navController.navigate("attendance/$cEnc/$sEnc")
+                },
                 onJoinSession = { subjectCode, subjectName ->
                     val cEnc = URLEncoder.encode(subjectCode, "UTF-8")
                     val sEnc = URLEncoder.encode(subjectName, "UTF-8")
@@ -130,6 +135,21 @@ fun AppNavigation() {
             )
         ) { back ->
             DataRecoveryScreen(
+                subjectCode = URLDecoder.decode(back.arguments?.getString("subjectCode") ?: "", "UTF-8"),
+                subjectName = URLDecoder.decode(back.arguments?.getString("subjectName") ?: "", "UTF-8"),
+                onBack      = { navController.popBackStack() }
+            )
+        }
+
+        // ── Attendance ────────────────────────────────────────────────────────
+        composable(
+            route     = "attendance/{subjectCode}/{subjectName}",
+            arguments = listOf(
+                navArgument("subjectCode") { type = NavType.StringType },
+                navArgument("subjectName") { type = NavType.StringType }
+            )
+        ) { back ->
+            AttendanceScreen(
                 subjectCode = URLDecoder.decode(back.arguments?.getString("subjectCode") ?: "", "UTF-8"),
                 subjectName = URLDecoder.decode(back.arguments?.getString("subjectName") ?: "", "UTF-8"),
                 onBack      = { navController.popBackStack() }

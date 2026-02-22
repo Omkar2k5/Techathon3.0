@@ -29,6 +29,8 @@ db = client["techathon"]
 users_col = db["users"]
 subjects_col = db["subjects"]
 enrollments_col = db["subject_enrollments"]
+attendance_col = db["attendance"]
+
 
 
 # ─── Models ───────────────────────────────────────────────────────────────────
@@ -61,6 +63,18 @@ class SubjectInfo(BaseModel):
     subject_code: str
     teacher_name: str = ""
     enrolled_at: str = ""
+
+class AttendanceRecordModel(BaseModel):
+    student_id: str
+    student_name: str
+    status: str # "present", "absent", "late"
+    marked_at: str
+
+class SubmitAttendanceRequest(BaseModel):
+    subject_code: str
+    date: str # yyyy-MM-dd
+    teacher_id: str
+    records: list[AttendanceRecordModel]
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -261,5 +275,92 @@ def create_subject(req: CreateSubjectRequest):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Teacher & Attendance ─────────────────────────────────────────────────────
+@app.get("/teacher/subjects/{subject_code}/students")
+def get_subject_students(subject_code: str):
+    try:
+        subj = subjects_col.find_one({"subject_code": subject_code.upper().strip()})
+        if not subj:
+            raise HTTPException(status_code=404, detail="Subject not found")
+        
+        enrollments = list(enrollments_col.find({"subject_id": subj["_id"]}))
+        res = []
+        for e in enrollments:
+            student = users_col.find_one({"_id": e["student_id"]})
+            if student:
+                res.append({
+                    "student_id": str(student["_id"]),
+                    "student_name": student.get("name", "Unknown"),
+                    "student_email": student.get("email", "")
+                })
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/attendance/submit")
+def submit_attendance(req: SubmitAttendanceRequest):
+    try:
+        teacher_oid = ObjectId(req.teacher_id)
+        subj = subjects_col.find_one({"subject_code": req.subject_code.upper().strip()})
+        if not subj:
+            raise HTTPException(status_code=404, detail="Subject not found")
+        
+        for rec in req.records:
+            student_oid = ObjectId(rec.student_id)
+            query = {
+                "subject_code": req.subject_code.upper().strip(),
+                "date": req.date,
+                "student_id": student_oid
+            }
+            
+            # parse iso marked_at
+            try:
+                dt = datetime.datetime.fromisoformat(rec.marked_at.replace("Z", "+00:00")).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            except Exception:
+                dt = datetime.datetime.utcnow()
+                
+            update = {
+                "$set": {
+                    "subject_id": subj["_id"],
+                    "student_name": rec.student_name,
+                    "status": rec.status,
+                    "marked_by": teacher_oid,
+                    "marked_at": dt
+                }
+            }
+            attendance_col.update_one(query, update, upsert=True)
+            
+        return {"success": True, "message": "Attendance saved successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/attendance/{subject_code}/{date}")
+def get_attendance(subject_code: str, date: str):
+    try:
+        records = list(attendance_col.find({
+            "subject_code": subject_code.upper().strip(),
+            "date": date
+        }))
+        res = []
+        for r in records:
+            dt_str = ""
+            if r.get("marked_at"):
+                try:
+                    dt_str = r["marked_at"].isoformat() + "Z"
+                except Exception:
+                    pass
+            res.append({
+                "student_id": str(r["student_id"]),
+                "student_name": r.get("student_name", ""),
+                "status": r.get("status", ""),
+                "marked_at": dt_str
+            })
+        return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

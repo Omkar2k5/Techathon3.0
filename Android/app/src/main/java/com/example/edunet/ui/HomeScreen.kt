@@ -49,6 +49,7 @@ private val OnAccent  = Color(0xFFFFFFFF)   // text/icon ON Accent/GreenOk butto
 fun HomeScreen(
     onLogout: () -> Unit,
     onStartSession: (teacherName: String, subjectName: String, subjectCode: String) -> Unit = { _, _, _ -> },
+    onOpenAttendance: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
     onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
     onOpenHistory: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
 ) {
@@ -59,7 +60,7 @@ fun HomeScreen(
     if (role == "teacher") {
         TeacherHomeScreen(session = session, onLogout = onLogout, onStartSession = { sn, sc ->
             onStartSession(session.getUserName(), sn, sc)
-        })
+        }, onOpenAttendance = onOpenAttendance)
     } else {
         StudentHomeScreen(session = session, onLogout = onLogout, onJoinSession = onJoinSession, onOpenHistory = onOpenHistory)
     }
@@ -262,7 +263,8 @@ fun StudentHomeScreen(
 fun TeacherHomeScreen(
     session: SessionManager,
     onLogout: () -> Unit,
-    onStartSession: (subjectName: String, subjectCode: String) -> Unit = { _, _ -> }
+    onStartSession: (subjectName: String, subjectCode: String) -> Unit = { _, _ -> },
+    onOpenAttendance: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val cache   = remember { SubjectCache(context) }
@@ -404,7 +406,11 @@ fun TeacherHomeScreen(
                     else -> {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(subjects) { subj ->
-                                TeacherSubjectCard(subj, onStartSession = { onStartSession(subj.subjectName, subj.subjectCode) })
+                                TeacherSubjectCard(
+                                    subj = subj,
+                                    onStartSession = { onStartSession(subj.subjectName, subj.subjectCode) },
+                                    onOpenAttendance = { onOpenAttendance(subj.subjectCode, subj.subjectName) }
+                                )
                             }
                         }
                     }
@@ -511,50 +517,62 @@ private fun StudentSubjectCard(
 }
 
 @Composable
-private fun TeacherSubjectCard(subj: SubjectItem, onStartSession: () -> Unit = {}) {
+private fun TeacherSubjectCard(
+    subj: SubjectItem,
+    onStartSession: () -> Unit = {},
+    onOpenAttendance: () -> Unit = {}
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onOpenAttendance() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF2A2A2A)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    subj.subjectCode.take(4),
-                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-                    textAlign = TextAlign.Center
-                )
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF2A2A2A)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        subj.subjectCode.take(4),
+                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(subj.subjectName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPri)
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text("Code: ${subj.subjectCode}", fontSize = 12.sp, color = TextSec)
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text("👥 ${subj.studentCount} students", fontSize = 11.sp, color = TextSec)
+                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(subj.subjectName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPri)
-                Spacer(modifier = Modifier.height(3.dp))
-                Text("Code: ${subj.subjectCode}", fontSize = 12.sp, color = TextSec)
-                Spacer(modifier = Modifier.height(3.dp))
-                Text("👥 ${subj.studentCount} students", fontSize = 11.sp, color = TextSec)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = onStartSession,
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp),
-                    tint = Color.White)
-                Spacer(Modifier.width(4.dp))
-                Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onOpenAttendance,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF333333))
+                ) {
+                    Text("📋 Attendance", fontSize = 12.sp, color = TextSec)
+                }
+                Button(
+                    onClick = onStartSession,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Start", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
             }
         }
     }

@@ -57,7 +57,7 @@
                     "type": "ObjectId",
                     "required": true,
                     "ref": "users._id",
-                    "description": "Reference to teacher (users._id)"
+                    "description": "Reference to teacher"
                 },
                 "created_at": {
                     "type": "ISODate",
@@ -95,6 +95,58 @@
                     "type": "ISODate",
                     "required": true,
                     "description": "Enrollment date"
+                }
+            }
+        },
+        "attendance": {
+            "description": "Daily attendance records marked by teachers for each enrolled student",
+            "index": "{ subject_code, date, student_id } unique",
+            "fields": {
+                "_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "description": "Record ID"
+                },
+                "subject_code": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Subject code"
+                },
+                "subject_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "subjects._id"
+                },
+                "student_id": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id"
+                },
+                "student_name": {
+                    "type": "String",
+                    "required": true,
+                    "description": "Snapshot of student display name"
+                },
+                "date": {
+                    "type": "String",
+                    "required": true,
+                    "description": "yyyy-MM-dd"
+                },
+                "status": {
+                    "type": "String",
+                    "required": true,
+                    "description": "present | absent | late"
+                },
+                "marked_by": {
+                    "type": "ObjectId",
+                    "required": true,
+                    "ref": "users._id",
+                    "description": "Teacher who marked"
+                },
+                "marked_at": {
+                    "type": "ISODate",
+                    "required": true,
+                    "description": "UTC timestamp of marking"
                 }
             }
         }

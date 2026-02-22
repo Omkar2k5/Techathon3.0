@@ -39,6 +39,20 @@ sealed class JoinResult {
     data class Error(val message: String) : JoinResult()
 }
 
+data class AttendanceRecord(
+    val studentId: String,
+    val studentName: String,
+    val status: String, // "present", "absent", "late"
+    val markedAt: String
+)
+
+data class EnrolledStudent(
+    val studentId: String,
+    val studentName: String,
+    val studentEmail: String
+)
+
+
 object MongoRepository {
 
     // ─── PC's local IP — phone must be on the same Wi-Fi / hotspot network ───
@@ -214,6 +228,71 @@ object MongoRepository {
             SubjectResult.Success(list)
         } catch (e: Exception) {
             SubjectResult.Error(e.message ?: "Failed to load subjects")
+        }
+    }
+
+    // ─── Attendance ───────────────────────────────────────────────────────────
+    suspend fun getEnrolledStudents(subjectCode: String): List<EnrolledStudent> = withContext(Dispatchers.IO) {
+        try {
+            val body = get("/teacher/subjects/$subjectCode/students")
+            val arr = JSONArray(body)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                EnrolledStudent(
+                    studentId    = o.optString("student_id"),
+                    studentName  = o.optString("student_name"),
+                    studentEmail = o.optString("student_email")
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getAttendanceForDate(subjectCode: String, date: String): List<AttendanceRecord> = withContext(Dispatchers.IO) {
+        try {
+            val body = get("/attendance/$subjectCode/$date")
+            val arr = JSONArray(body)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                AttendanceRecord(
+                    studentId   = o.optString("student_id"),
+                    studentName = o.optString("student_name"),
+                    status      = o.optString("status"),
+                    markedAt    = o.optString("marked_at")
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun submitAttendance(
+        subjectCode: String,
+        date: String,
+        teacherId: String,
+        records: List<AttendanceRecord>
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val recArray = JSONArray()
+            records.forEach { r ->
+                val o = JSONObject()
+                o.put("student_id", r.studentId)
+                o.put("student_name", r.studentName)
+                o.put("status", r.status)
+                o.put("marked_at", r.markedAt)
+                recArray.put(o)
+            }
+            val payload = JSONObject().apply {
+                put("subject_code", subjectCode)
+                put("date", date)
+                put("teacher_id", teacherId)
+                put("records", recArray)
+            }
+            val resp = post("/attendance/submit", payload)
+            resp.optBoolean("success", false)
+        } catch (e: Exception) {
+            false
         }
     }
 }

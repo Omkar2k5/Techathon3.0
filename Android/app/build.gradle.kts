@@ -96,6 +96,9 @@ dependencies {
 
     // Image loading for QR bitmap display
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // JSON serialization for offline attendance storage
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 configurations.all {
