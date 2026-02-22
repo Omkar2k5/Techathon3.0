@@ -32,6 +32,7 @@ import com.example.edunet.data.repository.JoinResult
 import com.example.edunet.data.repository.MongoRepository
 import com.example.edunet.data.repository.SubjectItem
 import com.example.edunet.data.repository.SubjectResult
+import com.example.edunet.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
 // ─── B&W Colours ─────────────────────────────────────────────────────────────
@@ -51,18 +52,24 @@ fun HomeScreen(
     onStartSession: (teacherName: String, subjectName: String, subjectCode: String) -> Unit = { _, _, _ -> },
     onOpenAttendance: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
     onJoinSession: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
-    onOpenHistory: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> }
+    onOpenHistory: (subjectCode: String, subjectName: String) -> Unit = { _, _ -> },
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val session = remember { SessionManager(context) }
     val role    = session.getUserRole()
 
+    fun doLogout() {
+        authViewModel.logout()
+        onLogout()
+    }
+
     if (role == "teacher") {
-        TeacherHomeScreen(session = session, onLogout = onLogout, onStartSession = { sn, sc ->
+        TeacherHomeScreen(session = session, onLogout = ::doLogout, onStartSession = { sn, sc ->
             onStartSession(session.getUserName(), sn, sc)
         }, onOpenAttendance = onOpenAttendance)
     } else {
-        StudentHomeScreen(session = session, onLogout = onLogout, onJoinSession = onJoinSession, onOpenHistory = onOpenHistory)
+        StudentHomeScreen(session = session, onLogout = ::doLogout, onJoinSession = onJoinSession, onOpenHistory = onOpenHistory)
     }
 }
 
@@ -159,7 +166,7 @@ fun StudentHomeScreen(
                                 Text(session.getUserName(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
-                        IconButton(onClick = { session.clearSession(); onLogout() }) {
+                        IconButton(onClick = { onLogout() }) {
                             Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.White)
                         }
                     }
@@ -336,7 +343,7 @@ fun TeacherHomeScreen(
                                 Text(session.getUserName(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
-                        IconButton(onClick = { session.clearSession(); onLogout() }) {
+                        IconButton(onClick = { onLogout() }) {
                             Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.White)
                         }
                     }

@@ -55,8 +55,12 @@ data class EnrolledStudent(
 
 object MongoRepository {
 
-    // ─── PC's local IP — phone must be on the same Wi-Fi / hotspot network ───
-    private const val BASE_URL = "http://192.168.137.1:8000"
+    // ─── Railway production URL ───────────────────────────────────────────────
+    // Replace with your actual Railway domain from: Settings → Networking → Generate Domain
+    private const val BASE_URL = "https://YOUR-APP-NAME.up.railway.app"
+
+    // ─── Local dev fallback (uncomment when testing on same Wi-Fi) ───────────
+    // private const val BASE_URL = "http://192.168.137.1:8000"
 
     private val JSON_TYPE = "application/json; charset=utf-8".toMediaType()
 

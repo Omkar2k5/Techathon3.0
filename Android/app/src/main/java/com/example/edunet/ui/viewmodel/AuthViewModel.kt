@@ -24,6 +24,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
 
+    init {
+        // Auto-restore session if user was previously logged in
+        if (session.isLoggedIn()) {
+            _uiState.value = AuthUiState.Success(
+                role  = session.getUserRole(),
+                name  = session.getUserName(),
+                email = session.getUserEmail()
+            )
+        }
+    }
+
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
             _uiState.value = AuthUiState.Error("Please fill in all fields")
@@ -60,6 +71,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = AuthUiState.Error((result as AuthResult.Error).message)
             }
         }
+    }
+
+    fun logout() {
+        session.clearSession()
+        _uiState.value = AuthUiState.Idle
     }
 
     fun resetState() {
