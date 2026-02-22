@@ -2,6 +2,7 @@
 name = "edunet"
 version = "1.0.0"
 edition = "2021"
+default-run = "edunet"
 
 [dependencies]
 rust-embed="8.4.0"

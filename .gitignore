@@ -25,7 +25,8 @@ Thumbs.db
 # Node modules and build files
 node_modules/
 /webpage/.cache/
-/webpage/.cache/
+/webpage/build/
+/webpage/dist/.cache/
 /webpage/dist/
 *.log
 npm-debug.log*

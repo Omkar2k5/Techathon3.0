@@ -88,19 +88,25 @@ pub async fn periodic_broadcast() {
                 if adapter.oper_status() == ipconfig::OperStatus::IfOperStatusUp {
                     for ip_addr in adapter.ip_addresses() {
                         if let IpAddr::V4(_ipv4_addr) = ip_addr {
-                            let subnet_mask = match adapter.ip_addresses().iter().find_map(|ip| match ip {
+                            if let Some(ipv4) = adapter.ip_addresses().iter().find_map(|ip| match ip {
                                 IpAddr::V4(ipv4) => Some(ipv4),
                                 _ => None,
                             }) {
-                                Some(ipv4) => match ipv4.octets() {
-                                    [a, b, c, _] => Some(Ipv4Addr::new(a, b, c, 255)),
-                                },
-                                None => None,
-                            };
-                            if let Some(broadcast_addr) = subnet_mask {
-                                let broadcast_addr = format!("{}:{}", broadcast_addr, BROADCAST_PORT);
-                                if let Err(e) = send_broadcast(broadcast_addr).await {
-                                    eprintln!("UDP: Broadcast error: {}", e);
+                                let octets = ipv4.octets();
+                                
+                                let bcasts = vec![
+                                    // /24 broadcast
+                                    format!("{}:{}", Ipv4Addr::new(octets[0], octets[1], octets[2], 255), BROADCAST_PORT),
+                                    // /16 broadcast
+                                    format!("{}:{}", Ipv4Addr::new(octets[0], octets[1], 255, 255), BROADCAST_PORT),
+                                    // Global broadcast
+                                    format!("{}:{}", Ipv4Addr::new(255, 255, 255, 255), BROADCAST_PORT),
+                                ];
+                                
+                                for broadcast_addr in bcasts {
+                                    if let Err(e) = send_broadcast(broadcast_addr).await {
+                                        eprintln!("UDP: Broadcast error: {}", e);
+                                    }
                                 }
                             }
                         }
