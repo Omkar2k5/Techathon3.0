@@ -22,8 +22,9 @@ Cargo.lock
 .DS_Store
 Thumbs.db
 
-# Node modules and build files for webpage
-/webpage/node_modules/
+# Node modules and build files
+node_modules/
+/webpage/.cache/
 /webpage/.cache/
 /webpage/dist/
 *.log
